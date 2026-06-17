@@ -1,12 +1,14 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
 const NAV_LINKS = [
   { href: '/dashboard',      label: 'Dashboard'       },
   { href: '/markets',        label: 'Markets'         },
+  { href: '/markets/resolved', label: 'Resolved'      },
   { href: '/methodology',    label: 'Methodology'     },
   { href: '/about',          label: 'About'           },
   { href: '/submit-dispute', label: 'Submit Dispute'  },
@@ -22,13 +24,17 @@ export function Nav() {
         {/* Wordmark */}
         <Link
           href="/"
-          className="flex items-center gap-2.5 group"
+          className="flex items-center gap-2 group"
           aria-label="Verdict — Home"
         >
-          {/* Logomark: a small V in a square */}
-          <span className="size-6 border border-foreground inline-flex items-center justify-center shrink-0 group-hover:bg-foreground group-hover:text-background transition-colors">
-            <span className="font-heading text-xs font-light leading-none select-none">V</span>
-          </span>
+          <Image
+            src="/verdict-logo.png"
+            alt="Verdict logo"
+            width={32}
+            height={32}
+            className="shrink-0 opacity-90 group-hover:opacity-100 transition-opacity"
+            priority
+          />
           <span className="font-heading text-[15px] font-light tracking-[0.1em] uppercase text-foreground group-hover:text-primary transition-colors">
             Verdict
           </span>
@@ -76,9 +82,13 @@ export function PageFooter() {
           {/* Brand column */}
           <div className="col-span-2 sm:col-span-1 flex flex-col gap-4">
             <Link href="/" className="flex items-center gap-2 group" aria-label="Verdict">
-              <span className="size-6 border border-foreground inline-flex items-center justify-center shrink-0">
-                <span className="font-heading text-xs font-light leading-none">V</span>
-              </span>
+              <Image
+                src="/verdict-logo.png"
+                alt="Verdict logo"
+                width={28}
+                height={28}
+                className="shrink-0 opacity-80 group-hover:opacity-100 transition-opacity"
+              />
               <span className="font-heading text-sm tracking-[0.1em] uppercase text-foreground">
                 Verdict
               </span>
@@ -96,7 +106,8 @@ export function PageFooter() {
             <p className="text-xs tracking-[0.12em] uppercase text-foreground font-medium">Product</p>
             <nav className="flex flex-col gap-2.5" aria-label="Product navigation">
               <Link href="/dashboard"   className="text-xs text-muted-foreground hover:text-foreground transition-colors">Dashboard</Link>
-              <Link href="/markets"     className="text-xs text-muted-foreground hover:text-foreground transition-colors">Markets</Link>
+              <Link href="/markets"         className="text-xs text-muted-foreground hover:text-foreground transition-colors">Markets</Link>
+              <Link href="/markets/resolved" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Resolved Markets</Link>
               <Link href="/markets?sort=score-asc&risk=Critical" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Critical Risk</Link>
               <Link href="/submit-dispute" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Submit Dispute</Link>
             </nav>

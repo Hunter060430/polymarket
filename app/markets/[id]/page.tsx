@@ -134,7 +134,7 @@ export default async function MarketDetailPage({
         <section className="border-b border-border pb-10 mb-10">
           <h2 className="font-heading text-2xl font-light text-foreground mb-1">Score Breakdown</h2>
           <p className="text-xs tracking-wide text-muted-foreground mb-6 uppercase">Six weighted criteria</p>
-          <ScoreBreakdown breakdown={score.breakdown} />
+              <ScoreBreakdown score={score} />
         </section>
 
         {/* ── Market Details ─────────────────────────────── */}

@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: 'Markets',
   description: 'Browse and filter all active Polymarket markets by Verdict clarity score, risk level, volume, and end date.',
 }
+import Link from 'next/link'
 import { MarketsListClient } from '@/components/markets/markets-list-client'
 import { AlertCircle } from 'lucide-react'
 import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'
@@ -70,6 +71,22 @@ export default function MarketsPage() {
             Filter, sort, and browse all active Polymarket markets by rule clarity score, risk level, volume, and end date.
           </p>
         </div>
+        {/* Tab strip */}
+        <div className="flex items-center gap-0 border-b border-border -mt-6">
+          <span
+            className="px-4 py-2.5 text-xs tracking-[0.06em] uppercase text-foreground border-b-2 border-foreground"
+            aria-current="page"
+          >
+            Active Markets
+          </span>
+          <Link
+            href="/markets/resolved"
+            className="px-4 py-2.5 text-xs tracking-[0.06em] uppercase text-muted-foreground hover:text-foreground transition-colors border-b-2 border-transparent hover:border-border"
+          >
+            Resolved Markets
+          </Link>
+        </div>
+
         <Suspense fallback={<MarketsSkeleton />}>
           <MarketsContent />
         </Suspense>

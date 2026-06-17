@@ -42,6 +42,7 @@ export interface RuleClarityScore {
   breakdown: RuleClarityBreakdown
   flags: string[]
   summary: string
+  dimensionDetails?: Record<keyof RuleClarityBreakdown, string>
 }
 
 export interface NormalizedMarket {

@@ -166,3 +166,48 @@ export const fetchAllActivePolymarketMarkets = unstable_cache(
   ['polymarket-active-markets-v3'],
   { revalidate: 300, tags: ['polymarket-markets'] }
 )
+
+// ---------------------------------------------------------------------------
+// Resolved (closed) markets — separate fetch so active and resolved are cached
+// independently. We cap at 100 to keep response size manageable.
+// ---------------------------------------------------------------------------
+
+async function fetchResolvedEventsPage(offset: number): Promise<PolymarketEvent[]> {
+  const url = new URL(`${GAMMA_API_BASE}/events`)
+  url.searchParams.set('active',    'false')
+  url.searchParams.set('closed',    'true')
+  url.searchParams.set('limit',     String(PAGE_LIMIT))
+  url.searchParams.set('offset',    String(offset))
+  url.searchParams.set('order',     'volume')
+  url.searchParams.set('ascending', 'false')
+
+  const controller = new AbortController()
+  const timeoutId  = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+
+  try {
+    const res = await fetch(url.toString(), {
+      signal:  controller.signal,
+      headers: { Accept: 'application/json' },
+      next:    { revalidate: 600 },   // resolved markets change less often
+    })
+    clearTimeout(timeoutId)
+    if (!res.ok) throw new Error(`Gamma API responded with ${res.status} at offset ${offset}`)
+    const data = await res.json()
+    return Array.isArray(data) ? data : []
+  } catch (err) {
+    clearTimeout(timeoutId)
+    return []
+  }
+}
+
+async function _fetchResolvedPolymarketMarkets(): Promise<NormalizedMarket[]> {
+  // One page of 100 resolved markets is enough for the resolved section.
+  const events = await fetchResolvedEventsPage(0)
+  return normalizePolymarketMarkets(events)
+}
+
+export const fetchResolvedPolymarketMarkets = unstable_cache(
+  _fetchResolvedPolymarketMarkets,
+  ['polymarket-resolved-markets-v1'],
+  { revalidate: 600, tags: ['polymarket-resolved'] }
+)
