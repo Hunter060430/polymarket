@@ -55,24 +55,18 @@ export async function fetchPolymarketEventsPage(
 }
 
 export async function fetchActivePolymarketEvents(): Promise<PolymarketEvent[]> {
-  const allEvents: PolymarketEvent[] = []
-  let offset = 0
+  const totalPages = Math.ceil(MAX_EVENTS / PAGE_LIMIT)
+  const offsets = Array.from({ length: totalPages }, (_, i) => i * PAGE_LIMIT)
 
-  while (allEvents.length < MAX_EVENTS) {
-    const page = await fetchPolymarketEventsPage(offset)
+  // Fetch all pages concurrently — total latency equals the slowest single
+  // request rather than the cumulative sum.
+  const pages = await Promise.all(
+    offsets.map((offset) =>
+      fetchPolymarketEventsPage(offset).catch(() => [] as PolymarketEvent[])
+    )
+  )
 
-    if (page.length === 0) break
-
-    allEvents.push(...page)
-
-    // Stop when we have enough or the API returned a short page (last page).
-    if (page.length < PAGE_LIMIT || allEvents.length >= MAX_EVENTS) break
-
-    offset += PAGE_LIMIT
-  }
-
-  // Trim to hard cap in case the last page pushed us slightly over.
-  return allEvents.slice(0, MAX_EVENTS)
+  return pages.flat().slice(0, MAX_EVENTS)
 }
 
 function parseStringArray(raw: string | undefined | null): string[] {
@@ -169,6 +163,6 @@ async function _fetchAllActivePolymarketMarkets(): Promise<NormalizedMarket[]> {
 // revalidation window pays the fetch cost; all others hit the cache instantly.
 export const fetchAllActivePolymarketMarkets = unstable_cache(
   _fetchAllActivePolymarketMarkets,
-  ['polymarket-active-markets'],
+  ['polymarket-active-markets-v2'],
   { revalidate: 300, tags: ['polymarket-markets'] }
 )
