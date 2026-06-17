@@ -81,7 +81,7 @@ export function DisputeForm() {
     return (
       <Card>
         <CardContent className="py-10 flex flex-col items-center text-center gap-3">
-          <CheckCircle className="size-10 text-[oklch(0.52_0.14_145)]" aria-hidden="true" />
+          <CheckCircle className="size-10 text-[var(--risk-low)]" aria-hidden="true" />
           <p className="text-base font-semibold text-foreground">Submission received</p>
           <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
             Thank you for your report. Your submission has been logged for review. If you provided a contact, we may follow up for additional information.

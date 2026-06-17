@@ -5,12 +5,11 @@ import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { RiskBadge } from '@/components/risk-badge'
-import { ScoreBar } from '@/components/score-gauge'
-import { Search, ArrowUpRight, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react'
-import { formatVolume, formatDate } from '@/lib/utils'
+import { ScoreGauge } from '@/components/score-gauge'
+import { Search, ArrowRight, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { formatVolume, formatDate, cn } from '@/lib/utils'
 import type { NormalizedMarket, RiskLevel } from '@/lib/types'
 
 interface MarketsListClientProps {
@@ -27,20 +26,23 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
   const [sortBy, setSortBy] = useState<string>('score-asc')
   const [page, setPage] = useState(1)
 
-  // Reset to page 1 whenever filters change
   function updateFilter<T>(setter: (v: T) => void) {
-    return (v: T) => { setter(v); setPage(1) }
+    return (v: T) => {
+      setter(v)
+      setPage(1)
+    }
   }
 
   const filtered = useMemo(() => {
-    let result = markets.filter((m) => {
+    const result = markets.filter((m) => {
       if (query) {
         const q = query.toLowerCase()
         if (
           !m.question.toLowerCase().includes(q) &&
           !m.eventTitle.toLowerCase().includes(q) &&
           !m.eventCategory.toLowerCase().includes(q)
-        ) return false
+        )
+          return false
       }
       if (riskFilter !== 'all' && m.score.riskLevel !== riskFilter) return false
       if (m.volume < (parseFloat(minVolume) || 0)) return false
@@ -49,10 +51,10 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
 
     return [...result].sort((a, b) => {
       switch (sortBy) {
-        case 'score-asc':    return a.score.totalScore - b.score.totalScore
-        case 'score-desc':   return b.score.totalScore - a.score.totalScore
-        case 'volume-desc':  return b.volume - a.volume
-        case 'volume-asc':   return a.volume - b.volume
+        case 'score-asc':   return a.score.totalScore - b.score.totalScore
+        case 'score-desc':  return b.score.totalScore - a.score.totalScore
+        case 'volume-desc': return b.volume - a.volume
+        case 'volume-asc':  return a.volume - b.volume
         case 'enddate-asc': {
           const da = a.endDate ? new Date(a.endDate).getTime() : Infinity
           const db = b.endDate ? new Date(b.endDate).getTime() : Infinity
@@ -69,14 +71,17 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
   const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[220px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" aria-hidden="true" />
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground"
+            aria-hidden="true"
+          />
           <Input
             placeholder="Search markets, events, categories..."
-            className="pl-9"
+            className="pl-9 text-sm"
             value={query}
             onChange={(e) => { setQuery(e.target.value); setPage(1) }}
             aria-label="Search markets"
@@ -84,7 +89,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
         </div>
 
         <Select value={riskFilter} onValueChange={(v) => v && updateFilter(setRiskFilter)(v)}>
-          <SelectTrigger className="w-[150px]" aria-label="Filter by risk level">
+          <SelectTrigger className="w-[148px] text-sm" aria-label="Filter by risk level">
             <SelectValue placeholder="Risk level" />
           </SelectTrigger>
           <SelectContent>
@@ -97,7 +102,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
         </Select>
 
         <Select value={minVolume} onValueChange={(v) => v && updateFilter(setMinVolume)(v)}>
-          <SelectTrigger className="w-[160px]" aria-label="Minimum volume filter">
+          <SelectTrigger className="w-[148px] text-sm" aria-label="Minimum volume filter">
             <SelectValue placeholder="Min volume" />
           </SelectTrigger>
           <SelectContent>
@@ -111,7 +116,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
         </Select>
 
         <Select value={sortBy} onValueChange={(v) => v && updateFilter(setSortBy)(v)}>
-          <SelectTrigger className="w-[180px]" aria-label="Sort markets by">
+          <SelectTrigger className="w-[170px] text-sm" aria-label="Sort markets by">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
@@ -119,7 +124,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
             <SelectItem value="score-desc">Score: Highest first</SelectItem>
             <SelectItem value="volume-desc">Volume: Highest first</SelectItem>
             <SelectItem value="volume-asc">Volume: Lowest first</SelectItem>
-            <SelectItem value="enddate-asc">End date: Soonest first</SelectItem>
+            <SelectItem value="enddate-asc">End date: Soonest</SelectItem>
             <SelectItem value="risk">Risk: Critical first</SelectItem>
           </SelectContent>
         </Select>
@@ -130,7 +135,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
         <p className="text-xs text-muted-foreground">
           {filtered.length === 0
             ? 'No markets match the current filters.'
-            : `Showing ${(safePage - 1) * PAGE_SIZE + 1}–${Math.min(safePage * PAGE_SIZE, filtered.length)} of ${filtered.length} markets`}
+            : `${(safePage - 1) * PAGE_SIZE + 1}–${Math.min(safePage * PAGE_SIZE, filtered.length)} of ${filtered.length} markets`}
         </p>
         {totalPages > 1 && (
           <p className="text-xs text-muted-foreground">
@@ -141,70 +146,76 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
 
       {/* Empty state */}
       {pageItems.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <AlertTriangle className="size-8 text-muted-foreground mb-3" aria-hidden="true" />
+        <div className="flex flex-col items-center justify-center py-16 text-center border border-border">
+          <AlertTriangle className="size-6 text-muted-foreground mb-3" aria-hidden="true" />
           <p className="text-sm text-muted-foreground">No markets match the current filters.</p>
         </div>
       )}
 
-      {/* Market cards */}
-      <div className="flex flex-col gap-2">
+      {/* Market rows — score left, content right */}
+      <div className="flex flex-col border border-border divide-y divide-border">
         {pageItems.map((market) => (
-          <Card key={market.marketId} className="hover:bg-muted/30 transition-colors">
-            <CardContent className="py-3 px-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <Link
-                    href={`/markets/${market.marketId}`}
-                    className="text-sm font-medium text-foreground hover:underline leading-snug line-clamp-2"
-                  >
-                    {market.question}
-                  </Link>
-                  <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                    {market.eventCategory && (
-                      <Badge variant="secondary" className="text-xs font-normal">
-                        {market.eventCategory}
-                      </Badge>
-                    )}
-                    {market.eventTitle && (
-                      <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-                        {market.eventTitle}
-                      </span>
-                    )}
-                  </div>
-                  {market.score.flags.length > 0 && (
-                    <p className="text-xs text-muted-foreground mt-1.5 line-clamp-1">
-                      {market.score.flags[0]}
-                    </p>
-                  )}
-                </div>
+          <div
+            key={market.marketId}
+            className={cn(
+              'flex items-center gap-4 px-4 py-3.5 hover:bg-secondary/40 transition-colors',
+              market.score.riskLevel === 'Critical' && 'border-l-2 border-l-[var(--risk-critical)]',
+              market.score.riskLevel === 'High' && 'border-l-2 border-l-[var(--risk-high)]'
+            )}
+          >
+            {/* Score badge — leftmost */}
+            <div className="shrink-0">
+              <ScoreGauge score={market.score.totalScore} riskLevel={market.score.riskLevel} size="sm" />
+            </div>
 
-                <div className="flex flex-col items-end gap-2 shrink-0">
-                  <RiskBadge level={market.score.riskLevel} />
-                  <ScoreBar score={market.score.totalScore} riskLevel={market.score.riskLevel} />
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span title="Volume">{formatVolume(market.volume)}</span>
-                    {market.endDate && (
-                      <span title="End date">{formatDate(market.endDate)}</span>
-                    )}
-                    <Link
-                      href={`/markets/${market.marketId}`}
-                      className="text-primary hover:underline flex items-center gap-0.5"
-                      aria-label={`View details for ${market.question}`}
-                    >
-                      Detail <ArrowUpRight className="size-3" aria-hidden="true" />
-                    </Link>
-                  </div>
-                </div>
+            {/* Main content */}
+            <div className="flex-1 min-w-0">
+              <Link
+                href={`/markets/${market.marketId}`}
+                className="text-sm font-medium text-foreground hover:text-primary hover:underline leading-snug line-clamp-2 transition-colors"
+              >
+                {market.question}
+              </Link>
+              <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                {market.eventCategory && (
+                  <Badge variant="secondary" className="text-[10px] font-normal">
+                    {market.eventCategory}
+                  </Badge>
+                )}
+                <RiskBadge level={market.score.riskLevel} />
+                {market.score.flags.length > 0 && (
+                  <span className="text-xs text-muted-foreground truncate max-w-[280px]">
+                    {market.score.flags[0]}
+                  </span>
+                )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+
+            {/* Meta + link */}
+            <div className="shrink-0 flex flex-col items-end gap-1.5 text-xs text-muted-foreground">
+              <span className="tabular-nums">{formatVolume(market.volume)}</span>
+              {market.endDate && (
+                <span>{formatDate(market.endDate)}</span>
+              )}
+              <Link
+                href={`/markets/${market.marketId}`}
+                className="inline-flex items-center gap-1 text-primary hover:underline"
+                aria-label={`View details for ${market.question}`}
+              >
+                Detail <ArrowRight className="size-3" aria-hidden="true" />
+              </Link>
+            </div>
+          </div>
         ))}
       </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 pt-2" role="navigation" aria-label="Pagination">
+        <div
+          className="flex items-center justify-center gap-2 pt-2"
+          role="navigation"
+          aria-label="Pagination"
+        >
           <Button
             variant="outline"
             size="sm"
@@ -216,7 +227,6 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
             Prev
           </Button>
 
-          {/* Page number pills — show at most 5 around current page */}
           {Array.from({ length: totalPages }, (_, i) => i + 1)
             .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 2)
             .reduce<(number | '…')[]>((acc, p, idx, arr) => {
@@ -226,7 +236,12 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
             }, [])
             .map((item, idx) =>
               item === '…' ? (
-                <span key={`ellipsis-${idx}`} className="px-1 text-xs text-muted-foreground select-none">…</span>
+                <span
+                  key={`ellipsis-${idx}`}
+                  className="px-1 text-xs text-muted-foreground select-none"
+                >
+                  …
+                </span>
               ) : (
                 <Button
                   key={item}

@@ -1,16 +1,10 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BarChart2, ShieldOff, TrendingDown, Database } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import type { NormalizedMarket } from '@/lib/types'
 
 interface StatsCardsProps {
   markets: NormalizedMarket[]
   eventCount: number
-}
-
-function fmt(n: number) {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`
-  return `$${n}`
 }
 
 export function StatsCards({ markets, eventCount }: StatsCardsProps) {
@@ -29,46 +23,81 @@ export function StatsCards({ markets, eventCount }: StatsCardsProps) {
     {
       title: 'Markets Scanned',
       value: markets.length.toLocaleString(),
-      sub: `from ${eventCount} events`,
+      sub: `across ${eventCount} events`,
       icon: Database,
+      accent: 'border-l-2 border-l-[var(--risk-low)]',
+      valueClass: 'text-foreground',
     },
     {
       title: 'Average Clarity Score',
       value: `${avgScore}/100`,
-      sub: avgScore >= 70 ? 'Generally adequate' : avgScore >= 50 ? 'Moderate concern' : 'Elevated concern',
+      sub:
+        avgScore >= 70
+          ? 'Generally adequate'
+          : avgScore >= 50
+          ? 'Moderate concern'
+          : 'Elevated concern',
       icon: BarChart2,
+      accent:
+        avgScore >= 70
+          ? 'border-l-2 border-l-[var(--risk-low)]'
+          : avgScore >= 50
+          ? 'border-l-2 border-l-[var(--risk-medium)]'
+          : 'border-l-2 border-l-[var(--risk-high)]',
+      valueClass:
+        avgScore >= 70
+          ? 'text-[var(--risk-low)]'
+          : avgScore >= 50
+          ? 'text-[var(--risk-medium)]'
+          : 'text-[var(--risk-high)]',
     },
     {
       title: 'Critical-Risk Markets',
       value: criticalCount.toLocaleString(),
       sub: 'Score below 40',
       icon: ShieldOff,
+      accent:
+        criticalCount > 0
+          ? 'border-l-2 border-l-[var(--risk-critical)]'
+          : 'border-l-2 border-l-border',
+      valueClass: criticalCount > 0 ? 'text-[var(--risk-critical)]' : 'text-foreground',
     },
     {
       title: 'High-Volume, Low-Clarity',
       value: highVolumeLowClarity.toLocaleString(),
-      sub: 'Score < 60, Volume > $50K',
+      sub: 'Volume >$50K, Score <60',
       icon: TrendingDown,
+      accent:
+        highVolumeLowClarity > 0
+          ? 'border-l-2 border-l-[var(--risk-high)]'
+          : 'border-l-2 border-l-border',
+      valueClass: highVolumeLowClarity > 0 ? 'text-[var(--risk-high)]' : 'text-foreground',
     },
   ]
 
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       {stats.map((stat) => {
         const Icon = stat.icon
         return (
-          <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {stat.title}
-              </CardTitle>
-              <Icon className="size-4 text-muted-foreground" aria-hidden="true" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold tracking-tight text-foreground">{stat.value}</p>
+          <div
+            key={stat.title}
+            className={cn(
+              'bg-card border border-border px-4 py-4 flex flex-col gap-3',
+              stat.accent
+            )}
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground leading-tight">{stat.title}</p>
+              <Icon className="size-3.5 text-muted-foreground" aria-hidden="true" />
+            </div>
+            <div>
+              <p className={cn('font-heading text-2xl font-light tabular-nums', stat.valueClass)}>
+                {stat.value}
+              </p>
               <p className="text-xs text-muted-foreground mt-1">{stat.sub}</p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )
       })}
     </div>
