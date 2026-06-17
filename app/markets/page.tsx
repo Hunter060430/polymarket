@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic'
 
 import { Suspense } from 'react'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Nav, PageFooter } from '@/components/nav'
 import { MarketsListClient } from '@/components/markets/markets-list-client'
 import { AlertCircle } from 'lucide-react'
@@ -19,23 +18,13 @@ async function getMarkets(): Promise<MarketsApiResponse> {
   }
 }
 
-function ListSkeleton() {
-  return (
-    <div className="flex flex-col gap-2">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <Skeleton key={i} className="h-16 w-full" />
-      ))}
-    </div>
-  )
-}
-
 async function MarketsContent() {
   try {
     const data = await getMarkets()
     return <MarketsListClient markets={data.markets} />
   } catch (err) {
     return (
-      <div className="flex items-center gap-2 text-sm text-destructive border border-destructive/30 px-4 py-3">
+      <div className="flex items-center gap-3 text-sm border border-destructive/40 px-5 py-4 text-destructive">
         <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
         Failed to load market data:{' '}
         {err instanceof Error ? err.message : 'Unknown error'}. Please try refreshing.
@@ -44,23 +33,38 @@ async function MarketsContent() {
   }
 }
 
+function MarketsSkeleton() {
+  return (
+    <div className="flex flex-col gap-0">
+      <div className="border border-border border-b-0 h-12 animate-pulse bg-secondary/20" />
+      <div className="border border-border divide-y divide-border">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-16 animate-pulse bg-secondary/10"
+            style={{ animationDelay: `${i * 60}ms` }}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function MarketsPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Nav />
-      <main className="flex-1 mx-auto w-full max-w-5xl px-6 py-8 flex flex-col gap-8">
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-primary font-medium mb-2">
-            Market Browser
-          </p>
-          <h1 className="font-heading text-3xl font-light tracking-tight text-foreground">
-            All Markets
+      <main className="flex-1 mx-auto w-full max-w-6xl px-6 py-12 flex flex-col gap-10">
+        <div className="border-b border-border pb-8">
+          <p className="text-xs tracking-[0.16em] uppercase text-primary mb-3">Market Browser</p>
+          <h1 className="font-heading text-5xl font-light tracking-tight text-foreground">
+            All Active Markets
           </h1>
-          <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-            Browse and filter all scanned Polymarket markets by risk level, volume, and clarity score.
+          <p className="text-sm text-muted-foreground mt-3 leading-relaxed max-w-2xl">
+            Filter, sort, and browse all active Polymarket markets by rule clarity score, risk level, volume, and end date.
           </p>
         </div>
-        <Suspense fallback={<ListSkeleton />}>
+        <Suspense fallback={<MarketsSkeleton />}>
           <MarketsContent />
         </Suspense>
       </main>

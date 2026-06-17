@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic'
 
 import { Suspense } from 'react'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Nav, PageFooter } from '@/components/nav'
 import { StatsCards } from '@/components/dashboard/stats-cards'
 import { MarketsTable } from '@/components/dashboard/markets-table'
@@ -22,13 +21,13 @@ async function getDashboardData(): Promise<MarketsApiResponse> {
 
 function DashboardSkeleton() {
   return (
-    <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div className="flex flex-col gap-10">
+      <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y divide-border border border-border">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-28 w-full" />
+          <div key={i} className="px-6 py-6 h-28 animate-pulse bg-secondary/20" />
         ))}
       </div>
-      <Skeleton className="h-96 w-full" />
+      <div className="border border-border h-96 animate-pulse bg-secondary/20" />
     </div>
   )
 }
@@ -40,7 +39,7 @@ async function DashboardContent() {
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
     return (
-      <div className="flex items-center gap-2 text-sm text-destructive border border-destructive/30 px-4 py-3">
+      <div className="flex items-center gap-3 text-sm border border-destructive/40 px-5 py-4 text-destructive">
         <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
         Failed to load market data: {msg}. Please try refreshing.
       </div>
@@ -55,13 +54,13 @@ async function DashboardContent() {
   })
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-10">
       <StatsCards markets={data.markets} eventCount={data.eventCount} />
       <div>
-        <div className="mb-4 flex items-baseline justify-between gap-4">
-          <h2 className="font-heading text-xl font-light text-foreground">Active Markets</h2>
+        <div className="flex items-baseline justify-between gap-4 pb-4 border-b border-border mb-0">
+          <h2 className="font-heading text-2xl font-light text-foreground">Active Markets</h2>
           <p className="text-xs text-muted-foreground tabular-nums shrink-0">
-            Scanned at {scannedTime} &mdash; sorted by lowest clarity score
+            Scanned {scannedTime} &middot; sorted by lowest clarity score
           </p>
         </div>
         <MarketsTable markets={sorted} />
@@ -74,18 +73,19 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Nav />
-      <main className="flex-1 mx-auto w-full max-w-5xl px-6 py-8 flex flex-col gap-8">
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-primary font-medium mb-2">
-            Live Index
-          </p>
-          <h1 className="font-heading text-3xl font-light tracking-tight text-foreground">
-            Prediction Market Rule Clarity Index
+      <main className="flex-1 mx-auto w-full max-w-6xl px-6 py-12 flex flex-col gap-10">
+
+        {/* Page header */}
+        <div className="border-b border-border pb-8">
+          <p className="text-xs tracking-[0.16em] uppercase text-primary mb-3">Live Index</p>
+          <h1 className="font-heading text-5xl font-light tracking-tight text-foreground">
+            Prediction Market Rule Clarity
           </h1>
-          <p className="text-sm text-muted-foreground mt-2 leading-relaxed max-w-2xl">
+          <p className="text-sm text-muted-foreground mt-3 leading-relaxed max-w-2xl">
             Independent heuristic analysis of active Polymarket markets — scored on time clarity, resolution source quality, outcome definition, evidence standards, edge case handling, and post-trade risk.
           </p>
         </div>
+
         <Suspense fallback={<DashboardSkeleton />}>
           <DashboardContent />
         </Suspense>

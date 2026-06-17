@@ -1,20 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
 import { RiskBadge } from '@/components/risk-badge'
-import { ScoreGauge } from '@/components/score-gauge'
-import { ArrowRight, AlertTriangle } from 'lucide-react'
-import { formatVolume, formatDate } from '@/lib/utils'
-import { cn } from '@/lib/utils'
+import { ArrowRight } from 'lucide-react'
+import { formatVolume, formatDate, cn } from '@/lib/utils'
 import type { NormalizedMarket } from '@/lib/types'
 
 interface MarketsTableProps {
@@ -24,92 +13,111 @@ interface MarketsTableProps {
 export function MarketsTable({ markets }: MarketsTableProps) {
   if (markets.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center border border-border">
-        <AlertTriangle className="size-6 text-muted-foreground mb-3" aria-hidden="true" />
+      <div className="border border-border py-16 text-center">
         <p className="text-sm text-muted-foreground">No markets available.</p>
       </div>
     )
   }
 
   return (
-    <div className="overflow-x-auto border border-border">
-      <Table>
-        <TableHeader>
-          <TableRow className="border-b border-border hover:bg-transparent">
-            <TableHead className="w-16 text-center text-xs uppercase tracking-wide">Score</TableHead>
-            <TableHead className="min-w-[280px] text-xs uppercase tracking-wide">Market Question</TableHead>
-            <TableHead className="min-w-[90px] text-xs uppercase tracking-wide">Volume</TableHead>
-            <TableHead className="min-w-[100px] text-xs uppercase tracking-wide">End Date</TableHead>
-            <TableHead className="min-w-[90px] text-xs uppercase tracking-wide">Risk</TableHead>
-            <TableHead className="min-w-[180px] text-xs uppercase tracking-wide">Top Flag</TableHead>
-            <TableHead className="w-10 sr-only">View</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {markets.map((market) => (
-            <TableRow
-              key={market.marketId}
-              className={cn(
-                'hover:bg-secondary/40 transition-colors border-b border-border',
-                market.score.riskLevel === 'Critical' && 'border-l-2 border-l-[var(--risk-critical)]',
-                market.score.riskLevel === 'High' && 'border-l-2 border-l-[var(--risk-high)]'
-              )}
-            >
-              {/* Score — leftmost, most prominent */}
-              <TableCell className="text-center py-3">
-                <ScoreGauge score={market.score.totalScore} riskLevel={market.score.riskLevel} size="sm" />
-              </TableCell>
-
-              {/* Question */}
-              <TableCell className="py-3">
-                <Link
-                  href={`/markets/${market.marketId}`}
-                  className="text-sm font-medium text-foreground hover:text-primary hover:underline leading-snug line-clamp-2 transition-colors"
-                >
-                  {market.question}
-                </Link>
-                {market.eventCategory && (
-                  <Badge variant="secondary" className="mt-1 text-[10px] font-normal">
-                    {market.eventCategory}
-                  </Badge>
+    <div className="border border-border overflow-x-auto">
+      <table className="w-full text-sm" role="table">
+        <thead>
+          <tr className="border-b border-border bg-secondary/30">
+            <th scope="col" className="text-left text-xs tracking-[0.1em] uppercase text-muted-foreground font-normal px-4 py-3 w-16">
+              Score
+            </th>
+            <th scope="col" className="text-left text-xs tracking-[0.1em] uppercase text-muted-foreground font-normal px-4 py-3">
+              Market Question
+            </th>
+            <th scope="col" className="text-left text-xs tracking-[0.1em] uppercase text-muted-foreground font-normal px-4 py-3 w-20 hidden md:table-cell">
+              Risk
+            </th>
+            <th scope="col" className="text-right text-xs tracking-[0.1em] uppercase text-muted-foreground font-normal px-4 py-3 w-20 hidden sm:table-cell">
+              Volume
+            </th>
+            <th scope="col" className="text-right text-xs tracking-[0.1em] uppercase text-muted-foreground font-normal px-4 py-3 w-28 hidden lg:table-cell">
+              End Date
+            </th>
+            <th scope="col" className="w-10 px-4 py-3">
+              <span className="sr-only">View</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {markets.map((market) => {
+            const isCritical = market.score.riskLevel === 'Critical'
+            const isHigh     = market.score.riskLevel === 'High'
+            return (
+              <tr
+                key={market.marketId}
+                className={cn(
+                  'group hover:bg-secondary/30 transition-colors',
+                  isCritical && '[border-left:2px_solid_var(--risk-critical)]',
+                  isHigh     && '[border-left:2px_solid_var(--risk-high)]'
                 )}
-              </TableCell>
+              >
+                {/* Score */}
+                <td className="px-4 py-4 text-center">
+                  <span
+                    className="font-heading text-2xl font-light tabular-nums leading-none"
+                    style={{
+                      color:
+                        market.score.riskLevel === 'Low'      ? 'var(--risk-low)' :
+                        market.score.riskLevel === 'Medium'   ? 'var(--risk-medium)' :
+                        market.score.riskLevel === 'High'     ? 'var(--risk-high)' :
+                        'var(--risk-critical)',
+                    }}
+                  >
+                    {market.score.totalScore}
+                  </span>
+                </td>
 
-              <TableCell className="text-sm tabular-nums text-muted-foreground py-3">
-                {formatVolume(market.volume)}
-              </TableCell>
+                {/* Question */}
+                <td className="px-4 py-4 max-w-sm">
+                  <Link
+                    href={`/markets/${market.marketId}`}
+                    className="text-sm text-foreground hover:text-primary transition-colors line-clamp-2 leading-snug"
+                  >
+                    {market.question}
+                  </Link>
+                  {market.score.flags.length > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                      {market.score.flags[0]}
+                    </p>
+                  )}
+                </td>
 
-              <TableCell className="text-xs text-muted-foreground py-3">
-                {formatDate(market.endDate) ?? '—'}
-              </TableCell>
+                {/* Risk */}
+                <td className="px-4 py-4 hidden md:table-cell">
+                  <RiskBadge level={market.score.riskLevel} />
+                </td>
 
-              <TableCell className="py-3">
-                <RiskBadge level={market.score.riskLevel} />
-              </TableCell>
+                {/* Volume */}
+                <td className="px-4 py-4 text-right tabular-nums text-sm text-muted-foreground hidden sm:table-cell">
+                  {formatVolume(market.volume)}
+                </td>
 
-              <TableCell className="max-w-[180px] py-3">
-                {market.score.flags.length > 0 ? (
-                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                    {market.score.flags[0]}
-                  </p>
-                ) : (
-                  <span className="text-xs text-muted-foreground">—</span>
-                )}
-              </TableCell>
+                {/* End date */}
+                <td className="px-4 py-4 text-right text-xs text-muted-foreground hidden lg:table-cell">
+                  {formatDate(market.endDate) ?? '—'}
+                </td>
 
-              <TableCell className="py-3">
-                <Link
-                  href={`/markets/${market.marketId}`}
-                  aria-label={`View details for ${market.question}`}
-                  className="inline-flex items-center justify-center size-7 hover:bg-secondary transition-colors"
-                >
-                  <ArrowRight className="size-3.5" aria-hidden="true" />
-                </Link>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+                {/* Arrow */}
+                <td className="px-4 py-4 text-right">
+                  <Link
+                    href={`/markets/${market.marketId}`}
+                    aria-label={`View ${market.question}`}
+                    className="inline-flex items-center justify-center size-7 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <ArrowRight className="size-3.5" aria-hidden="true" />
+                  </Link>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 }

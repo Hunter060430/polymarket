@@ -10,88 +10,61 @@ interface ScoreGaugeProps {
 
 // All colors reference the --risk-* CSS variables defined in globals.css
 const SCORE_TEXT_CLASS: Record<RiskLevel, string> = {
-  Low: 'text-[var(--risk-low)]',
-  Medium: 'text-[var(--risk-medium)]',
-  High: 'text-[var(--risk-high)]',
+  Low:      'text-[var(--risk-low)]',
+  Medium:   'text-[var(--risk-medium)]',
+  High:     'text-[var(--risk-high)]',
   Critical: 'text-[var(--risk-critical)]',
 }
 
-const BAR_BG_CLASS: Record<RiskLevel, string> = {
-  Low: 'bg-[var(--risk-low)]',
-  Medium: 'bg-[var(--risk-medium)]',
-  High: 'bg-[var(--risk-high)]',
-  Critical: 'bg-[var(--risk-critical)]',
-}
-
-// SVG stroke uses inline style so it can reference the CSS variable at runtime
 const STROKE_VAR: Record<RiskLevel, string> = {
-  Low: 'var(--risk-low)',
-  Medium: 'var(--risk-medium)',
-  High: 'var(--risk-high)',
+  Low:      'var(--risk-low)',
+  Medium:   'var(--risk-medium)',
+  High:     'var(--risk-high)',
   Critical: 'var(--risk-critical)',
 }
 
-export function ScoreBar({ score, riskLevel, className }: Omit<ScoreGaugeProps, 'size'>) {
-  return (
-    <div className={cn('flex items-center gap-2', className)}>
-      <div className="h-1.5 w-20 rounded-full bg-muted overflow-hidden">
-        <div
-          className={cn('h-full rounded-full transition-all', BAR_BG_CLASS[riskLevel])}
-          style={{ width: `${score}%` }}
-          role="progressbar"
-          aria-valuenow={score}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label={`Rule clarity score: ${score} out of 100`}
-        />
-      </div>
-      <span className={cn('text-xs font-semibold tabular-nums', SCORE_TEXT_CLASS[riskLevel])}>
-        {score}
-      </span>
-    </div>
-  )
-}
-
 export function ScoreGauge({ score, riskLevel, size = 'md', className }: ScoreGaugeProps) {
-  const sizeMap = {
-    sm: { outer: 'size-14', text: 'text-lg', label: 'text-[10px]', r: 22, stroke: 5, cx: 28 },
-    md: { outer: 'size-20', text: 'text-2xl', label: 'text-xs',    r: 34, stroke: 5, cx: 40 },
-    lg: { outer: 'size-28', text: 'text-3xl', label: 'text-sm',    r: 48, stroke: 6, cx: 56 },
-  }
-  const { outer, text, label, r, stroke, cx } = sizeMap[size]
-  const circumference = 2 * Math.PI * r
-  const dashOffset = circumference - (score / 100) * circumference
+  const cfg = {
+    sm: { outer: 'size-12', text: 'text-base', r: 20, stroke: 3, cx: 24 },
+    md: { outer: 'size-20', text: 'text-2xl',  r: 34, stroke: 4, cx: 40 },
+    lg: { outer: 'size-24', text: 'text-3xl',  r: 40, stroke: 4, cx: 48 },
+  }[size]
+
+  const circumference = 2 * Math.PI * cfg.r
+  const dashOffset    = circumference - (score / 100) * circumference
 
   return (
-    <div className={cn('relative flex items-center justify-center', outer, className)}>
+    <div className={cn('relative flex items-center justify-center', cfg.outer, className)}>
       <svg
-        viewBox={`0 0 ${cx * 2} ${cx * 2}`}
+        viewBox={`0 0 ${cfg.cx * 2} ${cfg.cx * 2}`}
         className="absolute inset-0 -rotate-90"
         aria-hidden="true"
       >
+        {/* Track */}
         <circle
-          cx={cx} cy={cx} r={r}
+          cx={cfg.cx} cy={cfg.cx} r={cfg.r}
           fill="none"
           stroke="currentColor"
-          strokeWidth={stroke}
+          strokeWidth={cfg.stroke}
           className="text-muted"
         />
+        {/* Fill */}
         <circle
-          cx={cx} cy={cx} r={r}
+          cx={cfg.cx} cy={cfg.cx} r={cfg.r}
           fill="none"
           stroke={STROKE_VAR[riskLevel]}
-          strokeWidth={stroke}
+          strokeWidth={cfg.stroke}
           strokeDasharray={circumference}
           strokeDashoffset={dashOffset}
-          strokeLinecap="round"
+          strokeLinecap="square"
         />
       </svg>
-      <div className="relative flex flex-col items-center">
-        <span className={cn('font-bold tabular-nums leading-none', text, SCORE_TEXT_CLASS[riskLevel])}>
-          {score}
-        </span>
-        <span className={cn('text-muted-foreground leading-none mt-0.5', label)}>/100</span>
-      </div>
+      <span
+        className={cn('relative font-heading font-light tabular-nums leading-none', cfg.text, SCORE_TEXT_CLASS[riskLevel])}
+        aria-label={`Rule clarity score: ${score} out of 100`}
+      >
+        {score}
+      </span>
     </div>
   )
 }

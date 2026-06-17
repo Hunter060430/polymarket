@@ -5,43 +5,34 @@ import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
 import { RiskBadge } from '@/components/risk-badge'
-import { ScoreGauge } from '@/components/score-gauge'
-import { Search, ArrowRight, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import { formatVolume, formatDate, cn } from '@/lib/utils'
 import type { NormalizedMarket, RiskLevel } from '@/lib/types'
+
+const PAGE_SIZE = 25
+const RISK_ORDER: Record<RiskLevel, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 }
 
 interface MarketsListClientProps {
   markets: NormalizedMarket[]
 }
 
-const PAGE_SIZE = 25
-const RISK_ORDER: Record<RiskLevel, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 }
-
 export function MarketsListClient({ markets }: MarketsListClientProps) {
-  const [query, setQuery] = useState('')
+  const [query, setQuery]           = useState('')
   const [riskFilter, setRiskFilter] = useState<string>('all')
-  const [minVolume, setMinVolume] = useState<string>('0')
-  const [sortBy, setSortBy] = useState<string>('score-asc')
-  const [page, setPage] = useState(1)
+  const [minVolume, setMinVolume]   = useState<string>('0')
+  const [sortBy, setSortBy]         = useState<string>('score-asc')
+  const [page, setPage]             = useState(1)
 
-  function updateFilter<T>(setter: (v: T) => void) {
-    return (v: T) => {
-      setter(v)
-      setPage(1)
-    }
+  function resetPage<T>(setter: (v: T) => void) {
+    return (v: T) => { setter(v); setPage(1) }
   }
 
   const filtered = useMemo(() => {
     const result = markets.filter((m) => {
       if (query) {
         const q = query.toLowerCase()
-        if (
-          !m.question.toLowerCase().includes(q) &&
-          !m.eventTitle.toLowerCase().includes(q) &&
-          !m.eventCategory.toLowerCase().includes(q)
-        )
+        if (!m.question.toLowerCase().includes(q) && !m.eventTitle.toLowerCase().includes(q) && !m.eventCategory.toLowerCase().includes(q))
           return false
       }
       if (riskFilter !== 'all' && m.score.riskLevel !== riskFilter) return false
@@ -61,35 +52,33 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
           return da - db
         }
         case 'risk': return RISK_ORDER[a.score.riskLevel] - RISK_ORDER[b.score.riskLevel]
-        default: return 0
+        default:     return 0
       }
     })
   }, [markets, query, riskFilter, minVolume, sortBy])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const safePage = Math.min(page, totalPages)
-  const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+  const safePage   = Math.min(page, totalPages)
+  const pageItems  = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
   return (
-    <div className="flex flex-col gap-5">
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[220px]">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground"
-            aria-hidden="true"
-          />
+    <div className="flex flex-col gap-0">
+
+      {/* ── Filter bar ─────────────────────────────────────── */}
+      <div className="border border-border border-b-0 bg-secondary/20 px-4 py-3 flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" aria-hidden="true" />
           <Input
-            placeholder="Search markets, events, categories..."
-            className="pl-9 text-sm"
+            placeholder="Search markets..."
+            className="pl-9 text-xs h-8 bg-background border-border"
             value={query}
             onChange={(e) => { setQuery(e.target.value); setPage(1) }}
             aria-label="Search markets"
           />
         </div>
 
-        <Select value={riskFilter} onValueChange={(v) => v && updateFilter(setRiskFilter)(v)}>
-          <SelectTrigger className="w-[148px] text-sm" aria-label="Filter by risk level">
+        <Select value={riskFilter} onValueChange={(v) => v && resetPage(setRiskFilter)(v)}>
+          <SelectTrigger className="w-36 text-xs h-8 bg-background border-border" aria-label="Risk level filter">
             <SelectValue placeholder="Risk level" />
           </SelectTrigger>
           <SelectContent>
@@ -101,8 +90,8 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
           </SelectContent>
         </Select>
 
-        <Select value={minVolume} onValueChange={(v) => v && updateFilter(setMinVolume)(v)}>
-          <SelectTrigger className="w-[148px] text-sm" aria-label="Minimum volume filter">
+        <Select value={minVolume} onValueChange={(v) => v && resetPage(setMinVolume)(v)}>
+          <SelectTrigger className="w-32 text-xs h-8 bg-background border-border" aria-label="Minimum volume">
             <SelectValue placeholder="Min volume" />
           </SelectTrigger>
           <SelectContent>
@@ -115,8 +104,8 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
           </SelectContent>
         </Select>
 
-        <Select value={sortBy} onValueChange={(v) => v && updateFilter(setSortBy)(v)}>
-          <SelectTrigger className="w-[170px] text-sm" aria-label="Sort markets by">
+        <Select value={sortBy} onValueChange={(v) => v && resetPage(setSortBy)(v)}>
+          <SelectTrigger className="w-44 text-xs h-8 bg-background border-border" aria-label="Sort by">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
@@ -130,101 +119,102 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
         </Select>
       </div>
 
-      {/* Result count */}
-      <div className="flex items-center justify-between">
+      {/* ── Count bar ──────────────────────────────────────── */}
+      <div className="border border-border border-b-0 px-4 py-2 flex items-center justify-between bg-background">
         <p className="text-xs text-muted-foreground">
           {filtered.length === 0
-            ? 'No markets match the current filters.'
+            ? 'No markets match.'
             : `${(safePage - 1) * PAGE_SIZE + 1}–${Math.min(safePage * PAGE_SIZE, filtered.length)} of ${filtered.length} markets`}
         </p>
         {totalPages > 1 && (
-          <p className="text-xs text-muted-foreground">
-            Page {safePage} / {totalPages}
-          </p>
+          <p className="text-xs text-muted-foreground">Page {safePage} / {totalPages}</p>
         )}
       </div>
 
-      {/* Empty state */}
-      {pageItems.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-center border border-border">
-          <AlertTriangle className="size-6 text-muted-foreground mb-3" aria-hidden="true" />
-          <p className="text-sm text-muted-foreground">No markets match the current filters.</p>
-        </div>
-      )}
-
-      {/* Market rows — score left, content right */}
-      <div className="flex flex-col border border-border divide-y divide-border">
-        {pageItems.map((market) => (
-          <div
-            key={market.marketId}
-            className={cn(
-              'flex items-center gap-4 px-4 py-3.5 hover:bg-secondary/40 transition-colors',
-              market.score.riskLevel === 'Critical' && 'border-l-2 border-l-[var(--risk-critical)]',
-              market.score.riskLevel === 'High' && 'border-l-2 border-l-[var(--risk-high)]'
-            )}
-          >
-            {/* Score badge — leftmost */}
-            <div className="shrink-0">
-              <ScoreGauge score={market.score.totalScore} riskLevel={market.score.riskLevel} size="sm" />
-            </div>
-
-            {/* Main content */}
-            <div className="flex-1 min-w-0">
-              <Link
-                href={`/markets/${market.marketId}`}
-                className="text-sm font-medium text-foreground hover:text-primary hover:underline leading-snug line-clamp-2 transition-colors"
-              >
-                {market.question}
-              </Link>
-              <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                {market.eventCategory && (
-                  <Badge variant="secondary" className="text-[10px] font-normal">
-                    {market.eventCategory}
-                  </Badge>
-                )}
-                <RiskBadge level={market.score.riskLevel} />
-                {market.score.flags.length > 0 && (
-                  <span className="text-xs text-muted-foreground truncate max-w-[280px]">
-                    {market.score.flags[0]}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Meta + link */}
-            <div className="shrink-0 flex flex-col items-end gap-1.5 text-xs text-muted-foreground">
-              <span className="tabular-nums">{formatVolume(market.volume)}</span>
-              {market.endDate && (
-                <span>{formatDate(market.endDate)}</span>
-              )}
-              <Link
-                href={`/markets/${market.marketId}`}
-                className="inline-flex items-center gap-1 text-primary hover:underline"
-                aria-label={`View details for ${market.question}`}
-              >
-                Detail <ArrowRight className="size-3" aria-hidden="true" />
-              </Link>
-            </div>
+      {/* ── Market rows ────────────────────────────────────── */}
+      <div className="border border-border divide-y divide-border">
+        {pageItems.length === 0 ? (
+          <div className="py-16 text-center">
+            <p className="text-sm text-muted-foreground">No markets match the current filters.</p>
           </div>
-        ))}
+        ) : (
+          pageItems.map((market) => {
+            const isCritical = market.score.riskLevel === 'Critical'
+            const isHigh     = market.score.riskLevel === 'High'
+            return (
+              <div
+                key={market.marketId}
+                className={cn(
+                  'flex items-center gap-5 px-5 py-4 hover:bg-secondary/25 transition-colors',
+                  isCritical && '[border-left:2px_solid_var(--risk-critical)]',
+                  isHigh     && '[border-left:2px_solid_var(--risk-high)]'
+                )}
+              >
+                {/* Score number */}
+                <div className="shrink-0 w-10 text-center">
+                  <span
+                    className="font-heading text-3xl font-light tabular-nums leading-none"
+                    style={{
+                      color:
+                        market.score.riskLevel === 'Low'      ? 'var(--risk-low)' :
+                        market.score.riskLevel === 'Medium'   ? 'var(--risk-medium)' :
+                        market.score.riskLevel === 'High'     ? 'var(--risk-high)' :
+                        'var(--risk-critical)',
+                    }}
+                  >
+                    {market.score.totalScore}
+                  </span>
+                </div>
+
+                {/* Thin divider */}
+                <div className="w-px self-stretch bg-border shrink-0" aria-hidden="true" />
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <Link
+                    href={`/markets/${market.marketId}`}
+                    className="text-sm text-foreground hover:text-primary transition-colors line-clamp-2 leading-snug font-medium"
+                  >
+                    {market.question}
+                  </Link>
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <RiskBadge level={market.score.riskLevel} />
+                    {market.eventCategory && (
+                      <span className="text-xs text-muted-foreground">{market.eventCategory}</span>
+                    )}
+                    {market.score.flags.length > 0 && (
+                      <span className="text-xs text-muted-foreground truncate max-w-xs hidden sm:inline">
+                        &middot; {market.score.flags[0]}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Meta */}
+                <div className="shrink-0 flex flex-col items-end gap-1 text-xs text-muted-foreground">
+                  <span className="tabular-nums font-medium">{formatVolume(market.volume)}</span>
+                  {market.endDate && <span>{formatDate(market.endDate)}</span>}
+                </div>
+
+                {/* Arrow */}
+                <Link
+                  href={`/markets/${market.marketId}`}
+                  aria-label={`View ${market.question}`}
+                  className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ArrowRight className="size-4" aria-hidden="true" />
+                </Link>
+              </div>
+            )
+          })
+        )}
       </div>
 
-      {/* Pagination */}
+      {/* ── Pagination ─────────────────────────────────────── */}
       {totalPages > 1 && (
-        <div
-          className="flex items-center justify-center gap-2 pt-2"
-          role="navigation"
-          aria-label="Pagination"
-        >
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={safePage <= 1}
-            aria-label="Previous page"
-          >
-            <ChevronLeft className="size-4" aria-hidden="true" />
-            Prev
+        <div className="border border-border border-t-0 px-4 py-3 flex items-center justify-center gap-1" role="navigation" aria-label="Pagination">
+          <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage <= 1} aria-label="Previous page" className="text-xs h-8 px-3">
+            <ChevronLeft className="size-3.5 mr-1" aria-hidden="true" />Prev
           </Button>
 
           {Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -236,16 +226,11 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
             }, [])
             .map((item, idx) =>
               item === '…' ? (
-                <span
-                  key={`ellipsis-${idx}`}
-                  className="px-1 text-xs text-muted-foreground select-none"
-                >
-                  …
-                </span>
+                <span key={`e-${idx}`} className="px-1 text-xs text-muted-foreground">…</span>
               ) : (
                 <Button
                   key={item}
-                  variant={item === safePage ? 'default' : 'outline'}
+                  variant={item === safePage ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setPage(item as number)}
                   aria-label={`Page ${item}`}
@@ -257,15 +242,8 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
               )
             )}
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={safePage >= totalPages}
-            aria-label="Next page"
-          >
-            Next
-            <ChevronRight className="size-4" aria-hidden="true" />
+          <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} aria-label="Next page" className="text-xs h-8 px-3">
+            Next<ChevronRight className="size-3.5 ml-1" aria-hidden="true" />
           </Button>
         </div>
       )}

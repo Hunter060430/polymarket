@@ -5,7 +5,6 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  /* Cormorant Garamond for headings, DM Sans for body */
   --font-heading: var(--font-cormorant);
   --font-sans: var(--font-dm-sans), 'DM Sans Fallback', ui-sans-serif, system-ui;
   --font-mono: var(--font-geist-mono), 'Geist Mono Fallback';
@@ -40,69 +39,99 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-xl: calc(var(--radius) * 1.25);
+  --radius-2xl: calc(var(--radius) * 1.5);
+  --radius-3xl: calc(var(--radius) * 2);
+  --radius-4xl: calc(var(--radius) * 2.5);
 }
 
 :root {
   color-scheme: light;
-  /* Dune: warm sand whites, deep charcoal ink, amber/spice accents */
-  --background: oklch(0.985 0.006 80);        /* warm off-white — sand paper */
-  --foreground: oklch(0.18 0.018 60);          /* deep warm charcoal — ink */
-  --card: oklch(1 0 0);                        /* pure white cards */
-  --card-foreground: oklch(0.18 0.018 60);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.018 60);
-  --primary: oklch(0.52 0.10 65);              /* amber-spice — Dune brand */
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.96 0.008 75);           /* light sand */
-  --secondary-foreground: oklch(0.28 0.018 60);
-  --muted: oklch(0.95 0.006 75);
-  --muted-foreground: oklch(0.50 0.016 65);
-  --accent: oklch(0.95 0.006 75);
-  --accent-foreground: oklch(0.28 0.018 60);
-  --destructive: oklch(0.54 0.22 27);
-  --border: oklch(0.88 0.010 75);              /* warm sand border */
-  --input: oklch(0.88 0.010 75);
-  --ring: oklch(0.52 0.10 65);
-  /* Risk level colors — warm-shifted for Dune palette */
-  --risk-low: oklch(0.50 0.13 145);            /* sage green */
-  --risk-medium: oklch(0.60 0.14 75);          /* amber */
-  --risk-high: oklch(0.55 0.18 45);            /* burnt orange */
-  --risk-critical: oklch(0.48 0.20 27);        /* deep rust */
-  --chart-1: oklch(0.52 0.10 65);
-  --chart-2: oklch(0.50 0.13 145);
-  --chart-3: oklch(0.60 0.14 75);
-  --chart-4: oklch(0.55 0.18 45);
-  --chart-5: oklch(0.48 0.20 27);
-  --radius: 0.2rem;                            /* very tight radius — minimal */
-  --sidebar: oklch(0.18 0.018 60);
-  --sidebar-foreground: oklch(0.92 0.006 75);
-  --sidebar-primary: oklch(0.60 0.14 75);
-  --sidebar-primary-foreground: oklch(0.18 0.018 60);
-  --sidebar-accent: oklch(0.26 0.018 60);
-  --sidebar-accent-foreground: oklch(0.92 0.006 75);
-  --sidebar-border: oklch(0.30 0.018 60);
-  --sidebar-ring: oklch(0.52 0.10 65);
+
+  /* Pure white — not warm, not off-white. Dune is the contrast, not the background */
+  --background:        oklch(1 0 0);
+  --foreground:        oklch(0.14 0.016 55);       /* deep warm charcoal — ink on parchment */
+
+  --card:              oklch(1 0 0);
+  --card-foreground:   oklch(0.14 0.016 55);
+
+  --popover:           oklch(1 0 0);
+  --popover-foreground: oklch(0.14 0.016 55);
+
+  /* Spice amber — the Dune accent */
+  --primary:           oklch(0.54 0.12 62);
+  --primary-foreground: oklch(1 0 0);
+
+  /* Pale sand for hover states */
+  --secondary:         oklch(0.97 0.005 70);
+  --secondary-foreground: oklch(0.24 0.016 55);
+
+  --muted:             oklch(0.96 0.004 70);
+  --muted-foreground:  oklch(0.52 0.014 60);
+
+  --accent:            oklch(0.96 0.004 70);
+  --accent-foreground: oklch(0.24 0.016 55);
+
+  --destructive:       oklch(0.52 0.22 27);
+
+  /* Hairline borders — barely visible on white */
+  --border:            oklch(0.90 0.008 70);
+  --input:             oklch(0.90 0.008 70);
+  --ring:              oklch(0.54 0.12 62);
+
+  /* Risk levels — warm-palette calibrated */
+  --risk-low:          oklch(0.48 0.13 148);    /* sage green */
+  --risk-medium:       oklch(0.58 0.14 72);     /* warm amber */
+  --risk-high:         oklch(0.53 0.19 43);     /* burnt orange */
+  --risk-critical:     oklch(0.46 0.21 27);     /* deep rust */
+
+  /* Chart palette */
+  --chart-1: oklch(0.54 0.12 62);
+  --chart-2: oklch(0.48 0.13 148);
+  --chart-3: oklch(0.58 0.14 72);
+  --chart-4: oklch(0.53 0.19 43);
+  --chart-5: oklch(0.46 0.21 27);
+
+  /* Zero radius — no rounded corners anywhere */
+  --radius: 0rem;
+
+  --sidebar:                oklch(0.14 0.016 55);
+  --sidebar-foreground:     oklch(0.94 0.005 70);
+  --sidebar-primary:        oklch(0.58 0.14 72);
+  --sidebar-primary-foreground: oklch(0.14 0.016 55);
+  --sidebar-accent:         oklch(0.22 0.016 55);
+  --sidebar-accent-foreground: oklch(0.94 0.005 70);
+  --sidebar-border:         oklch(0.26 0.016 55);
+  --sidebar-ring:           oklch(0.54 0.12 62);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: 'kern' 1, 'liga' 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+
   html {
     @apply font-sans;
   }
-  /* Heading elements use the serif font */
+
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading), var(--font-sans);
+    font-weight: 300;
+    letter-spacing: -0.01em;
+  }
+
+  /* Tight, elegant selection */
+  ::selection {
+    background-color: oklch(0.54 0.12 62 / 0.18);
   }
 }
