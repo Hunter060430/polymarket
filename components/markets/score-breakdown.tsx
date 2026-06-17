@@ -1,3 +1,4 @@
+import { Progress } from '@/components/ui/progress'
 import type { RuleClarityBreakdown } from '@/lib/types'
 
 interface ScoreBreakdownProps {
