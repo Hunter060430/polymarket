@@ -1,4 +1,3 @@
-import { Progress } from '@/components/ui/progress'
 import type { RuleClarityBreakdown } from '@/lib/types'
 
 interface ScoreBreakdownProps {
@@ -46,10 +45,10 @@ const CRITERIA = [
 
 function getBarColor(score: number, max: number): string {
   const pct = score / max
-  if (pct >= 0.8) return 'bg-[oklch(0.52_0.14_145)]'
-  if (pct >= 0.6) return 'bg-[oklch(0.72_0.17_75)]'
-  if (pct >= 0.35) return 'bg-[oklch(0.62_0.2_45)]'
-  return 'bg-[oklch(0.52_0.22_27)]'
+  if (pct >= 0.8) return 'bg-[var(--risk-low)]'
+  if (pct >= 0.6) return 'bg-[var(--risk-medium)]'
+  if (pct >= 0.35) return 'bg-[var(--risk-high)]'
+  return 'bg-[var(--risk-critical)]'
 }
 
 export function ScoreBreakdown({ breakdown }: ScoreBreakdownProps) {

@@ -17,15 +17,26 @@ export function Nav() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-        <Link href="/dashboard" className="flex items-center gap-2.5 text-foreground hover:opacity-80 transition-opacity">
-          <ShieldAlert className="size-5 text-primary" />
-          <span className="font-semibold text-sm tracking-tight leading-none">
-            Rule Clarity Index
-          </span>
+      {/* Brand accent bar */}
+      <div className="h-0.5 w-full bg-primary" aria-hidden="true" />
+
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2.5 sm:px-6">
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-2.5 text-foreground hover:opacity-80 transition-opacity"
+        >
+          <div className="flex size-7 items-center justify-center rounded bg-primary">
+            <ShieldAlert className="size-4 text-primary-foreground" />
+          </div>
+          <div className="flex flex-col leading-none">
+            <span className="font-semibold text-sm tracking-tight">Rule Clarity Index</span>
+            <span className="text-[10px] text-muted-foreground hidden sm:block">
+              Polymarket watchdog
+            </span>
+          </div>
         </Link>
 
-        <nav className="flex items-center gap-1" aria-label="Main navigation">
+        <nav className="flex items-center gap-0.5" aria-label="Main navigation">
           {NAV_LINKS.map(({ href, label, icon: Icon }) => {
             const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
             return (
@@ -33,14 +44,20 @@ export function Nav() {
                 key={href}
                 href={href}
                 className={cn(
-                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                  'relative flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
                   active
-                    ? 'bg-secondary text-foreground'
-                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                    ? 'text-foreground bg-secondary'
+                    : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground'
                 )}
               >
                 <Icon className="size-3.5" aria-hidden="true" />
                 <span className="hidden sm:inline">{label}</span>
+                {active && (
+                  <span
+                    className="absolute inset-x-3 -bottom-[12px] h-0.5 rounded-full bg-primary"
+                    aria-hidden="true"
+                  />
+                )}
               </Link>
             )
           })}

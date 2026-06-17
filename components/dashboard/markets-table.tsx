@@ -13,29 +13,11 @@ import { Badge } from '@/components/ui/badge'
 import { RiskBadge } from '@/components/risk-badge'
 import { ScoreBar } from '@/components/score-gauge'
 import { ArrowRight, AlertTriangle } from 'lucide-react'
+import { formatVolume, formatDate } from '@/lib/utils'
 import type { NormalizedMarket } from '@/lib/types'
 
 interface MarketsTableProps {
   markets: NormalizedMarket[]
-}
-
-function formatVolume(n: number) {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`
-  return `$${n}`
-}
-
-function formatDate(dateStr: string) {
-  if (!dateStr) return '—'
-  try {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
-  } catch {
-    return '—'
-  }
 }
 
 export function MarketsTable({ markets }: MarketsTableProps) {
@@ -80,7 +62,7 @@ export function MarketsTable({ markets }: MarketsTableProps) {
                 {formatVolume(market.liquidity)}
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">
-                {formatDate(market.endDate)}
+                {formatDate(market.endDate) ?? '—'}
               </TableCell>
               <TableCell>
                 <ScoreBar score={market.score.totalScore} riskLevel={market.score.riskLevel} />
