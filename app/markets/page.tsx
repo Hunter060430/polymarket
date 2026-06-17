@@ -2,6 +2,12 @@ export const dynamic = 'force-dynamic'
 
 import { Suspense } from 'react'
 import { Nav, PageFooter } from '@/components/nav'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Markets',
+  description: 'Browse and filter all active Polymarket markets by Verdict clarity score, risk level, volume, and end date.',
+}
 import { MarketsListClient } from '@/components/markets/markets-list-client'
 import { AlertCircle } from 'lucide-react'
 import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'

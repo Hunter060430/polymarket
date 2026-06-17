@@ -1,28 +1,59 @@
 import Link from 'next/link'
 import { Nav, PageFooter } from '@/components/nav'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Shield, Clock, BookOpen, BarChart2, AlertTriangle, FileCheck } from 'lucide-react'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Verdict — Prediction Market Clarity Index',
+  description:
+    'Independent scoring of Polymarket prediction markets. Know the resolution quality before you trade.',
+}
 
 const STATS = [
-  { value: '200+', label: 'Active markets scanned' },
-  { value: '6',    label: 'Scored criteria' },
-  { value: '0–100', label: 'Clarity score range' },
-  { value: '5 min', label: 'Cache revalidation' },
+  { value: '200+', label: 'Markets scanned' },
+  { value: '6',    label: 'Scored dimensions' },
+  { value: '0–100', label: 'Clarity score' },
+  { value: '5 min', label: 'Cache refresh' },
 ]
 
-const CRITERIA = [
-  { num: '01', name: 'Time Clarity',       desc: 'End date, timezone, and temporal constraint specificity.' },
-  { num: '02', name: 'Resolution Source',  desc: 'Named, authoritative, and hierarchically structured sources.' },
-  { num: '03', name: 'Outcome Definition', desc: 'Concise question, binary outcomes, explicit YES definition.' },
-  { num: '04', name: 'Evidence Standard',  desc: 'Accepted and excluded evidence types are defined.' },
-  { num: '05', name: 'Edge Case Handling', desc: 'Delays, revisions, cancellations, and late reporting addressed.' },
-  { num: '06', name: 'Post-Trade Risk',    desc: 'Description depth, source completeness, timing constraints.' },
+const FEATURES = [
+  {
+    icon: Clock,
+    title: 'Time Clarity',
+    desc: 'End date, timezone, and temporal constraint specificity — does the market tell you exactly when it resolves?',
+  },
+  {
+    icon: BookOpen,
+    title: 'Resolution Source',
+    desc: 'Is the resolution authority named, institutional, and hierarchically specified? Or just "credible reporting"?',
+  },
+  {
+    icon: FileCheck,
+    title: 'Outcome Definition',
+    desc: 'Is YES unambiguously defined? Binary outcomes with explicit criteria score highest.',
+  },
+  {
+    icon: Shield,
+    title: 'Evidence Standard',
+    desc: 'Does the market specify accepted and excluded evidence? Ambiguity here is where disputes start.',
+  },
+  {
+    icon: AlertTriangle,
+    title: 'Edge Case Handling',
+    desc: 'Delays, revisions, cancellations, late reporting — the markets that fail say nothing about these.',
+  },
+  {
+    icon: BarChart2,
+    title: 'Post-Trade Risk',
+    desc: 'A composite of description depth, source completeness, and timing clarity. The overall structural risk.',
+  },
 ]
 
 const RISK_LEVELS = [
-  { label: 'Low',      range: '80–100', color: 'var(--risk-low)',      note: 'Well-specified, low dispute risk.' },
-  { label: 'Medium',   range: '60–79',  color: 'var(--risk-medium)',   note: 'Some ambiguity. Review before large positions.' },
+  { label: 'Low',      range: '80–100', color: 'var(--risk-low)',      note: 'Well-specified resolution criteria. Low dispute risk.' },
+  { label: 'Medium',   range: '60–79',  color: 'var(--risk-medium)',   note: 'Some ambiguity. Review criteria before large positions.' },
   { label: 'High',     range: '40–59',  color: 'var(--risk-high)',     note: 'Significant concerns. Material dispute potential.' },
-  { label: 'Critical', range: '0–39',   color: 'var(--risk-critical)', note: 'Substantially underspecified. High risk.' },
+  { label: 'Critical', range: '0–39',   color: 'var(--risk-critical)', note: 'Substantially underspecified. High risk for all participants.' },
 ]
 
 export default function LandingPage() {
@@ -35,124 +66,150 @@ export default function LandingPage() {
         {/* ── HERO ─────────────────────────────────────────────── */}
         <section className="border-b border-border">
           <div className="mx-auto max-w-6xl px-6">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-0">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px]">
+
               {/* Left — headline */}
-              <div className="py-20 lg:py-28 lg:pr-16 lg:border-r border-border">
-                <p className="text-xs tracking-[0.18em] uppercase text-primary mb-8 font-medium">
-                  Independent Watchdog &mdash; Polymarket
-                </p>
-                <h1 className="font-heading text-6xl sm:text-7xl lg:text-8xl font-light leading-[0.96] tracking-tight text-foreground text-balance mb-8">
-                  Prediction<br />
-                  markets deserve<br />
-                  <em className="not-italic text-primary">clear rules.</em>
+              <div className="py-20 lg:py-32 lg:pr-16 lg:border-r border-border">
+                <div className="inline-flex items-center gap-3 mb-10">
+                  <div className="h-px w-8 bg-primary" aria-hidden="true" />
+                  <p className="text-xs tracking-[0.2em] uppercase text-primary font-medium">
+                    Independent Watchdog
+                  </p>
+                </div>
+                <h1 className="font-heading text-[clamp(3.5rem,8vw,6.5rem)] font-light leading-[0.93] tracking-tight text-foreground text-balance mb-10">
+                  Does this market<br />
+                  have{' '}
+                  <em className="not-italic text-primary">clear rules?</em>
                 </h1>
-                <p className="text-base text-muted-foreground leading-relaxed max-w-md mb-10">
-                  The Rule Clarity Index scans active Polymarket markets in real time and scores each one across six dimensions of resolution quality — before you trade.
+                <p className="text-base text-muted-foreground leading-relaxed max-w-lg mb-10">
+                  Verdict scores every active Polymarket market across six dimensions of resolution
+                  quality — in real time, before you trade. No black boxes. No discretion.
+                  Deterministic, documented, and free.
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
                   <Link
                     href="/dashboard"
-                    className="inline-flex items-center gap-2.5 bg-foreground text-background px-6 py-3 text-xs tracking-[0.1em] uppercase font-medium hover:bg-primary transition-colors"
+                    className="inline-flex items-center gap-2.5 bg-foreground text-background px-7 py-3.5 text-xs tracking-[0.12em] uppercase font-medium hover:bg-primary transition-colors"
                   >
                     Open Dashboard
                     <ArrowRight className="size-3.5" aria-hidden="true" />
                   </Link>
                   <Link
-                    href="/markets"
-                    className="inline-flex items-center gap-2.5 border border-border text-foreground px-6 py-3 text-xs tracking-[0.1em] uppercase font-medium hover:bg-secondary transition-colors"
+                    href="/markets?sort=score-asc&risk=Critical"
+                    className="inline-flex items-center gap-2.5 border border-border text-foreground px-7 py-3.5 text-xs tracking-[0.12em] uppercase font-medium hover:bg-secondary transition-colors"
                   >
-                    Browse Markets
+                    Critical Risk Markets
                   </Link>
                 </div>
               </div>
 
-              {/* Right — stats */}
-              <div className="hidden lg:flex flex-col justify-center gap-0 pl-16 py-28">
-                {STATS.map((s) => (
-                  <div key={s.label} className="py-5 border-b border-border last:border-b-0 first:border-t border-border">
-                    <p className="font-heading text-4xl font-light text-foreground tabular-nums">{s.value}</p>
-                    <p className="text-xs text-muted-foreground mt-1 tracking-wide">{s.label}</p>
-                  </div>
-                ))}
+              {/* Right — live stats */}
+              <div className="hidden lg:flex flex-col justify-center pl-16 py-32">
+                <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground mb-6">Live Index</p>
+                <div className="divide-y divide-border border-t border-border">
+                  {STATS.map((s) => (
+                    <div key={s.label} className="py-6">
+                      <p className="font-heading text-5xl font-light text-foreground tabular-nums leading-none">{s.value}</p>
+                      <p className="text-xs text-muted-foreground mt-2 tracking-wide">{s.label}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
+
             </div>
           </div>
         </section>
 
         {/* ── STATS MOBILE ─────────────────────────────────────── */}
         <section className="border-b border-border lg:hidden" aria-label="Key statistics">
-          <div className="mx-auto max-w-6xl px-6 py-8">
-            <div className="grid grid-cols-2 gap-0 divide-x divide-y divide-border border border-border">
+          <div className="mx-auto max-w-6xl px-6 py-10">
+            <div className="grid grid-cols-2 divide-x divide-y divide-border border border-border">
               {STATS.map((s) => (
-                <div key={s.label} className="px-5 py-5">
-                  <p className="font-heading text-3xl font-light text-foreground tabular-nums">{s.value}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
+                <div key={s.label} className="px-6 py-6">
+                  <p className="font-heading text-4xl font-light text-foreground tabular-nums leading-none">{s.value}</p>
+                  <p className="text-xs text-muted-foreground mt-2">{s.label}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* ── HOW IT WORKS ─────────────────────────────────────── */}
+        {/* ── PROBLEM STATEMENT ────────────────────────────────── */}
         <section className="border-b border-border">
-          <div className="mx-auto max-w-6xl px-6 py-16">
-            <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-12 lg:gap-0">
-              <div className="lg:pr-12 lg:border-r border-border">
-                <p className="text-xs tracking-[0.18em] uppercase text-muted-foreground mb-4">Framework</p>
-                <h2 className="font-heading text-4xl font-light text-foreground leading-tight">
-                  Six criteria.<br />One score.
+          <div className="mx-auto max-w-6xl px-6 py-20">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
+              <div>
+                <p className="text-xs tracking-[0.18em] uppercase text-muted-foreground mb-5">The Problem</p>
+                <h2 className="font-heading text-4xl lg:text-5xl font-light text-foreground leading-tight">
+                  Ambiguous rules are the source of every dispute.
                 </h2>
-                <p className="text-sm text-muted-foreground mt-4 leading-relaxed">
-                  Each market is evaluated against a deterministic, publicly documented ruleset. No black boxes. No discretion.
+              </div>
+              <div className="flex flex-col gap-5 text-sm text-muted-foreground leading-relaxed justify-center">
+                <p>
+                  Prediction markets resolve based on the written criteria in a market's description.
+                  When those criteria are vague, the resolution becomes a judgment call —
+                  and judgment calls become disputes.
+                </p>
+                <p>
+                  Verdict applies a deterministic, six-dimension ruleset to every active market and
+                  produces a 0–100 clarity score before any money is at risk.
                 </p>
                 <Link
                   href="/methodology"
-                  className="inline-flex items-center gap-2 mt-6 text-xs tracking-[0.08em] uppercase text-primary hover:underline underline-offset-4"
+                  className="inline-flex items-center gap-2 text-xs tracking-[0.1em] uppercase text-primary hover:underline underline-offset-4 mt-1 self-start"
                 >
-                  Read full methodology
+                  Read the full methodology
                   <ArrowRight className="size-3" aria-hidden="true" />
                 </Link>
-              </div>
-              <div className="lg:pl-12">
-                <div className="divide-y divide-border">
-                  {CRITERIA.map((c) => (
-                    <div key={c.num} className="flex items-start gap-6 py-5 first:pt-0 last:pb-0">
-                      <span className="font-heading text-xs text-muted-foreground tabular-nums mt-0.5 w-5 shrink-0">{c.num}</span>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{c.name}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{c.desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ── RISK LEVELS ──────────────────────────────────────── */}
+        {/* ── SIX DIMENSIONS ───────────────────────────────────── */}
         <section className="border-b border-border">
-          <div className="mx-auto max-w-6xl px-6 py-16">
-            <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-12 lg:gap-0">
-              <div className="lg:pr-12 lg:border-r border-border">
-                <p className="text-xs tracking-[0.18em] uppercase text-muted-foreground mb-4">Risk Scale</p>
-                <h2 className="font-heading text-4xl font-light text-foreground leading-tight">
-                  Four levels of clarity risk.
-                </h2>
+          <div className="mx-auto max-w-6xl px-6 py-20">
+            <div className="flex items-baseline justify-between gap-8 mb-12">
+              <div>
+                <p className="text-xs tracking-[0.18em] uppercase text-muted-foreground mb-4">Framework</p>
+                <h2 className="font-heading text-4xl font-light text-foreground">Six dimensions. One score.</h2>
               </div>
-              <div className="lg:pl-12">
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 divide-x divide-y divide-border border-t border-l border-border">
+              {FEATURES.map(({ icon: Icon, title, desc }) => (
+                <div key={title} className="px-7 py-8 border-b border-r border-border">
+                  <Icon className="size-5 text-primary mb-5 stroke-[1.25]" aria-hidden="true" />
+                  <p className="text-sm font-medium text-foreground mb-2">{title}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── RISK SCALE ───────────────────────────────────────── */}
+        <section className="border-b border-border">
+          <div className="mx-auto max-w-6xl px-6 py-20">
+            <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-12 lg:gap-0">
+              <div className="lg:pr-16 lg:border-r border-border">
+                <p className="text-xs tracking-[0.18em] uppercase text-muted-foreground mb-5">Risk Scale</p>
+                <h2 className="font-heading text-4xl font-light text-foreground leading-tight">
+                  Four levels.<br />Instantly legible.
+                </h2>
+                <p className="text-sm text-muted-foreground mt-5 leading-relaxed">
+                  Every market gets a level. Critical means high dispute risk. Low means the rules are solid.
+                </p>
+              </div>
+              <div className="lg:pl-16">
                 <div className="divide-y divide-border">
                   {RISK_LEVELS.map((r) => (
-                    <div
-                      key={r.label}
-                      className="flex items-center gap-6 py-5 first:pt-0 last:pb-0"
-                    >
-                      <div className="w-1 self-stretch shrink-0" style={{ backgroundColor: r.color }} aria-hidden="true" />
-                      <div className="w-24 shrink-0">
-                        <p className="text-sm font-medium" style={{ color: r.color }}>{r.label}</p>
-                        <p className="text-xs text-muted-foreground tabular-nums">{r.range} pts</p>
+                    <div key={r.label} className="flex items-start gap-6 py-7 first:pt-0 last:pb-0">
+                      <div className="w-0.5 self-stretch shrink-0 mt-1" style={{ backgroundColor: r.color }} aria-hidden="true" />
+                      <div className="w-28 shrink-0">
+                        <p className="font-heading text-2xl font-light" style={{ color: r.color }}>{r.label}</p>
+                        <p className="text-xs text-muted-foreground tabular-nums mt-0.5">{r.range} pts</p>
                       </div>
-                      <p className="text-sm text-muted-foreground leading-relaxed">{r.note}</p>
+                      <p className="text-sm text-muted-foreground leading-relaxed pt-0.5">{r.note}</p>
                     </div>
                   ))}
                 </div>
@@ -163,29 +220,40 @@ export default function LandingPage() {
 
         {/* ── CTA ──────────────────────────────────────────────── */}
         <section>
-          <div className="mx-auto max-w-6xl px-6 py-20 flex flex-col lg:flex-row items-start lg:items-end justify-between gap-10">
-            <div className="max-w-lg">
-              <h2 className="font-heading text-5xl font-light text-foreground leading-tight">
-                Start with the markets that matter most.
-              </h2>
-              <p className="text-sm text-muted-foreground mt-4 leading-relaxed">
-                Filtered to Critical-risk markets — the lowest clarity scores, the highest dispute potential.
-              </p>
-            </div>
-            <div className="flex flex-col gap-3 shrink-0">
-              <Link
-                href="/markets?sort=score-asc&risk=Critical"
-                className="inline-flex items-center gap-2.5 bg-foreground text-background px-6 py-3 text-xs tracking-[0.1em] uppercase font-medium hover:bg-primary transition-colors"
-              >
-                View Critical-Risk Markets
-                <ArrowRight className="size-3.5" aria-hidden="true" />
-              </Link>
-              <Link
-                href="/submit-dispute"
-                className="inline-flex items-center gap-2.5 border border-border text-foreground px-6 py-3 text-xs tracking-[0.1em] uppercase font-medium hover:bg-secondary transition-colors"
-              >
-                Submit a Disputed Resolution
-              </Link>
+          <div className="mx-auto max-w-6xl px-6 py-24">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-end">
+              <div>
+                <h2 className="font-heading text-5xl lg:text-6xl font-light text-foreground leading-tight text-balance">
+                  Start with the markets that matter most.
+                </h2>
+              </div>
+              <div className="flex flex-col gap-4">
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Filter to Critical-risk markets — the lowest clarity scores, the highest potential for disputed resolutions.
+                </p>
+                <div className="flex flex-col gap-3 mt-2">
+                  <Link
+                    href="/markets?sort=score-asc&risk=Critical"
+                    className="inline-flex items-center gap-2.5 bg-foreground text-background px-7 py-3.5 text-xs tracking-[0.12em] uppercase font-medium hover:bg-primary transition-colors"
+                  >
+                    View Critical-Risk Markets
+                    <ArrowRight className="size-3.5" aria-hidden="true" />
+                  </Link>
+                  <Link
+                    href="/submit-dispute"
+                    className="inline-flex items-center gap-2.5 border border-border text-foreground px-7 py-3.5 text-xs tracking-[0.12em] uppercase font-medium hover:bg-secondary transition-colors"
+                  >
+                    Report a Disputed Resolution
+                  </Link>
+                  <Link
+                    href="/about"
+                    className="inline-flex items-center gap-2 text-xs tracking-[0.08em] uppercase text-muted-foreground hover:text-foreground transition-colors pt-1"
+                  >
+                    About Verdict
+                    <ArrowRight className="size-3" aria-hidden="true" />
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
         </section>

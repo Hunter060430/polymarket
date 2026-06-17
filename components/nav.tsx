@@ -5,46 +5,56 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
 const NAV_LINKS = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/markets',   label: 'Markets'   },
-  { href: '/methodology', label: 'Methodology' },
-  { href: '/submit-dispute', label: 'Submit Dispute' },
+  { href: '/dashboard',      label: 'Dashboard'       },
+  { href: '/markets',        label: 'Markets'         },
+  { href: '/methodology',    label: 'Methodology'     },
+  { href: '/about',          label: 'About'           },
+  { href: '/submit-dispute', label: 'Submit Dispute'  },
 ]
 
 export function Nav() {
   const pathname = usePathname()
 
   return (
-    <header className="border-b border-border bg-background">
+    <header className="border-b border-border bg-background sticky top-0 z-50">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 h-14">
+
         {/* Wordmark */}
         <Link
           href="/"
-          className="font-heading text-[15px] font-light tracking-[0.08em] uppercase text-foreground hover:text-primary transition-colors"
+          className="flex items-center gap-2.5 group"
+          aria-label="Verdict — Home"
         >
-          Rule Clarity Index
+          {/* Logomark: a small V in a square */}
+          <span className="size-6 border border-foreground inline-flex items-center justify-center shrink-0 group-hover:bg-foreground group-hover:text-background transition-colors">
+            <span className="font-heading text-xs font-light leading-none select-none">V</span>
+          </span>
+          <span className="font-heading text-[15px] font-light tracking-[0.1em] uppercase text-foreground group-hover:text-primary transition-colors">
+            Verdict
+          </span>
         </Link>
 
         {/* Nav links */}
         <nav className="flex items-center" aria-label="Main navigation">
           {NAV_LINKS.map(({ href, label }) => {
-            const active =
-              href === '/dashboard'
-                ? pathname === href
-                : pathname.startsWith(href)
+            const active = href === '/dashboard'
+              ? pathname === href
+              : pathname.startsWith(href)
             return (
               <Link
                 key={href}
                 href={href}
                 className={cn(
-                  'relative px-4 h-14 inline-flex items-center text-xs tracking-[0.06em] uppercase transition-colors',
+                  'relative px-3 h-14 inline-flex items-center text-xs tracking-[0.06em] uppercase transition-colors',
                   active
-                    ? 'text-foreground after:absolute after:bottom-0 after:left-4 after:right-4 after:h-px after:bg-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'text-foreground after:absolute after:bottom-0 after:left-3 after:right-3 after:h-[1.5px] after:bg-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
+                  // Hide lower-priority links on smaller screens
+                  href === '/methodology' && 'hidden lg:inline-flex',
+                  href === '/submit-dispute' && 'hidden md:inline-flex',
                 )}
               >
-                <span className="hidden sm:inline">{label}</span>
-                <span className="sm:hidden">{label.split(' ')[0]}</span>
+                {label}
               </Link>
             )
           })}
@@ -55,19 +65,84 @@ export function Nav() {
 }
 
 export function PageFooter() {
+  const currentYear = new Date().getFullYear()
   return (
-    <footer className="border-t border-border mt-auto">
-      <div className="mx-auto max-w-6xl px-6 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-6">
-          <Link href="/" className="font-heading text-xs tracking-[0.08em] uppercase text-muted-foreground hover:text-foreground transition-colors">
-            Rule Clarity Index
-          </Link>
-          <Link href="/methodology" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Methodology</Link>
-          <Link href="/submit-dispute" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Submit Dispute</Link>
+    <footer className="border-t border-border mt-auto bg-background">
+      <div className="mx-auto max-w-6xl px-6">
+
+        {/* Main footer grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 py-12 border-b border-border">
+
+          {/* Brand column */}
+          <div className="col-span-2 sm:col-span-1 flex flex-col gap-4">
+            <Link href="/" className="flex items-center gap-2 group" aria-label="Verdict">
+              <span className="size-6 border border-foreground inline-flex items-center justify-center shrink-0">
+                <span className="font-heading text-xs font-light leading-none">V</span>
+              </span>
+              <span className="font-heading text-sm tracking-[0.1em] uppercase text-foreground">
+                Verdict
+              </span>
+            </Link>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Independent scoring of prediction market resolution quality. Know before you trade.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Data sourced from the Polymarket Gamma API. Not affiliated with Polymarket.
+            </p>
+          </div>
+
+          {/* Product column */}
+          <div className="flex flex-col gap-3">
+            <p className="text-xs tracking-[0.12em] uppercase text-foreground font-medium">Product</p>
+            <nav className="flex flex-col gap-2.5" aria-label="Product navigation">
+              <Link href="/dashboard"   className="text-xs text-muted-foreground hover:text-foreground transition-colors">Dashboard</Link>
+              <Link href="/markets"     className="text-xs text-muted-foreground hover:text-foreground transition-colors">Markets</Link>
+              <Link href="/markets?sort=score-asc&risk=Critical" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Critical Risk</Link>
+              <Link href="/submit-dispute" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Submit Dispute</Link>
+            </nav>
+          </div>
+
+          {/* Resources column */}
+          <div className="flex flex-col gap-3">
+            <p className="text-xs tracking-[0.12em] uppercase text-foreground font-medium">Resources</p>
+            <nav className="flex flex-col gap-2.5" aria-label="Resources navigation">
+              <Link href="/methodology" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Methodology</Link>
+              <Link href="/about"       className="text-xs text-muted-foreground hover:text-foreground transition-colors">About</Link>
+              <a
+                href="https://gamma-api.polymarket.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Polymarket API ↗
+              </a>
+            </nav>
+          </div>
+
+          {/* Legal column */}
+          <div className="flex flex-col gap-3">
+            <p className="text-xs tracking-[0.12em] uppercase text-foreground font-medium">Legal</p>
+            <div className="flex flex-col gap-2.5">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Scores are heuristic estimates. Not legal or financial advice.
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Anonymized dispute cases may be published in the public interest.
+              </p>
+            </div>
+          </div>
         </div>
-        <p className="text-xs text-muted-foreground leading-relaxed max-w-sm text-right">
-          Data from Polymarket Gamma API. Scores are heuristic estimates — not legal or financial advice. Independent, unaffiliated.
-        </p>
+
+        {/* Bottom bar */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 py-5">
+          <p className="text-xs text-muted-foreground">
+            &copy; {currentYear} Verdict. Independent and unaffiliated.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Built with public data for the public interest.
+          </p>
+        </div>
+
       </div>
     </footer>
   )

@@ -2,6 +2,12 @@ export const dynamic = 'force-dynamic'
 
 import { Suspense } from 'react'
 import { Nav, PageFooter } from '@/components/nav'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Dashboard',
+  description: 'Live Verdict scores for all active Polymarket markets, sorted by lowest clarity score.',
+}
 import { StatsCards } from '@/components/dashboard/stats-cards'
 import { MarketsTable } from '@/components/dashboard/markets-table'
 import { AlertCircle } from 'lucide-react'
@@ -79,10 +85,10 @@ export default function DashboardPage() {
         <div className="border-b border-border pb-8">
           <p className="text-xs tracking-[0.16em] uppercase text-primary mb-3">Live Index</p>
           <h1 className="font-heading text-5xl font-light tracking-tight text-foreground">
-            Prediction Market Rule Clarity
+            Market Clarity Dashboard
           </h1>
           <p className="text-sm text-muted-foreground mt-3 leading-relaxed max-w-2xl">
-            Independent heuristic analysis of active Polymarket markets — scored on time clarity, resolution source quality, outcome definition, evidence standards, edge case handling, and post-trade risk.
+            Real-time Verdict scores for all active Polymarket markets — scored across six dimensions: time clarity, resolution source quality, outcome definition, evidence standards, edge case handling, and post-trade risk.
           </p>
         </div>
 

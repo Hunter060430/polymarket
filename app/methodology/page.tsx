@@ -1,4 +1,10 @@
 import { Nav, PageFooter } from '@/components/nav'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Methodology',
+  description: 'How Verdict scores prediction market resolution quality across six weighted dimensions. Fully documented, deterministic, and open.',
+}
 
 const CRITERIA = [
   {
@@ -104,7 +110,7 @@ export default function MethodologyPage() {
             Scoring Methodology
           </h1>
           <p className="text-sm text-muted-foreground mt-4 leading-relaxed max-w-xl">
-            How the Rule Clarity Index evaluates prediction market resolution quality across six weighted dimensions.
+            How Verdict evaluates prediction market resolution quality across six weighted dimensions. Deterministic, documented, and applied equally to every market.
           </p>
         </div>
 

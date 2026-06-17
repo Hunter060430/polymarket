@@ -25,15 +25,34 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Rule Clarity Index — Prediction Market Watchdog',
+  title: {
+    default: 'Verdict — Prediction Market Clarity Index',
+    template: '%s — Verdict',
+  },
   description:
-    'An independent watchdog that scans active Polymarket markets and scores each one on rule clarity, evidence standards, and post-trade risk.',
+    'Verdict is an independent watchdog that scores active Polymarket markets on rule clarity, evidence standards, and post-trade resolution risk. Know before you trade.',
+  keywords: ['prediction markets', 'polymarket', 'market clarity', 'resolution risk', 'watchdog'],
+  authors: [{ name: 'Verdict' }],
+  openGraph: {
+    title: 'Verdict — Prediction Market Clarity Index',
+    description: 'Independent scoring of Polymarket resolution quality. Know before you trade.',
+    type: 'website',
+    locale: 'en_US',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Verdict — Prediction Market Clarity Index',
+    description: 'Independent scoring of Polymarket resolution quality. Know before you trade.',
+  },
+  robots: { index: true, follow: true },
   generator: 'v0.app',
 }
 
 export const viewport: Viewport = {
   colorScheme: 'light',
   themeColor: '#ffffff',
+  width: 'device-width',
+  initialScale: 1,
 }
 
 export default function RootLayout({

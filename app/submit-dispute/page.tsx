@@ -1,5 +1,11 @@
 import { Nav, PageFooter } from '@/components/nav'
 import { DisputeForm } from '@/components/dispute/dispute-form'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Submit a Dispute',
+  description: 'Report a Polymarket resolution you believe was inconsistent with the stated resolution criteria. Verdict documents cases for independent analysis.',
+}
 
 export default function SubmitDisputePage() {
   return (
