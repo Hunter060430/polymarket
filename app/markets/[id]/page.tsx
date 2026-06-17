@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { notFound } from 'next/navigation'
 import { Nav } from '@/components/nav'
 import { Alert, AlertDescription } from '@/components/ui/alert'
