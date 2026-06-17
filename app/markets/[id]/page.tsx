@@ -9,21 +9,12 @@ import { ScoreGauge } from '@/components/score-gauge'
 import { ScoreBreakdown } from '@/components/markets/score-breakdown'
 import { RawJsonPanel } from '@/components/markets/raw-json-panel'
 import { Info, ExternalLink, Calendar, DollarSign, Droplets, FileText } from 'lucide-react'
-import type { MarketsApiResponse, NormalizedMarket } from '@/lib/types'
+import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'
+import type { NormalizedMarket } from '@/lib/types'
 
 async function getMarket(id: string): Promise<NormalizedMarket | null> {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_BASE_URL ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
-
-  const res = await fetch(`${baseUrl}/api/polymarket/markets`, {
-    next: { revalidate: 300 },
-  })
-
-  if (!res.ok) return null
-
-  const data: MarketsApiResponse = await res.json()
-  return data.markets.find((m) => m.marketId === id) ?? null
+  const markets = await fetchAllActivePolymarketMarkets()
+  return markets.find((m) => m.marketId === id) ?? null
 }
 
 function formatVolume(n: number) {

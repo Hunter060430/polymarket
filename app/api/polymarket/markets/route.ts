@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { fetchAllActivePolymarketMarkets, normalizePolymarketMarkets } from '@/lib/polymarket'
+import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'
 import type { MarketsApiResponse, NormalizedMarket } from '@/lib/types'
 import { calculateRuleClarityScore } from '@/lib/rule-clarity-score'
 

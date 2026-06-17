@@ -4,19 +4,18 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Nav } from '@/components/nav'
 import { MarketsListClient } from '@/components/markets/markets-list-client'
 import { Info, AlertCircle } from 'lucide-react'
+import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'
 import type { MarketsApiResponse } from '@/lib/types'
 
 async function getMarkets(): Promise<MarketsApiResponse> {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_BASE_URL ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
-
-  const res = await fetch(`${baseUrl}/api/polymarket/markets`, {
-    next: { revalidate: 300 },
-  })
-
-  if (!res.ok) throw new Error(`Status ${res.status}`)
-  return res.json()
+  const markets = await fetchAllActivePolymarketMarkets()
+  const uniqueEventIds = new Set(markets.map((m) => m.eventId))
+  return {
+    scannedAt: new Date().toISOString(),
+    eventCount: uniqueEventIds.size,
+    marketCount: markets.length,
+    markets,
+  }
 }
 
 function ListSkeleton() {

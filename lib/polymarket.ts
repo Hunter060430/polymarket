@@ -1,14 +1,15 @@
+import { unstable_cache } from 'next/cache'
 import type { PolymarketEvent, PolymarketMarket, NormalizedMarket } from './types'
 import { calculateRuleClarityScore } from './rule-clarity-score'
 
 const GAMMA_API_BASE = 'https://gamma-api.polymarket.com'
+// Fetch at most this many events per request — sorted by volume descending so
+// we always see the highest-activity, most-scrutinised markets first.
+const MAX_EVENTS = 500
 const PAGE_LIMIT = 100
-const DELAY_MS = 150
-const REQUEST_TIMEOUT_MS = 10000
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
+const REQUEST_TIMEOUT_MS = 15000
+// Cache each individual page for 5 minutes server-side.
+const CACHE_REVALIDATE_S = 300
 
 export async function fetchPolymarketEventsPage(
   offset: number,
@@ -19,8 +20,10 @@ export async function fetchPolymarketEventsPage(
   url.searchParams.set('closed', 'false')
   url.searchParams.set('limit', String(limit))
   url.searchParams.set('offset', String(offset))
-
-  console.log(`[polymarket] Fetching events page — offset: ${offset}, limit: ${limit}`)
+  // Sort by volume descending so page 0 contains the markets most relevant for
+  // risk analysis (high-liquidity markets attract the most post-trade disputes).
+  url.searchParams.set('order', 'volumeNum')
+  url.searchParams.set('ascending', 'false')
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
@@ -29,18 +32,18 @@ export async function fetchPolymarketEventsPage(
     const res = await fetch(url.toString(), {
       signal: controller.signal,
       headers: { Accept: 'application/json' },
-      next: { revalidate: 300 },
+      // Next.js ISR — reuse cached response for up to 5 min across all requests.
+      next: { revalidate: CACHE_REVALIDATE_S },
     })
 
     clearTimeout(timeoutId)
 
     if (!res.ok) {
-      throw new Error(`Gamma API responded with status ${res.status} for offset ${offset}`)
+      throw new Error(`Gamma API responded with ${res.status} for offset ${offset}`)
     }
 
     const data = await res.json()
     const events: PolymarketEvent[] = Array.isArray(data) ? data : []
-    console.log(`[polymarket] offset ${offset} → ${events.length} events returned`)
     return events
   } catch (err) {
     clearTimeout(timeoutId)
@@ -51,32 +54,25 @@ export async function fetchPolymarketEventsPage(
   }
 }
 
-export async function fetchAllActivePolymarketEvents(): Promise<PolymarketEvent[]> {
+export async function fetchActivePolymarketEvents(): Promise<PolymarketEvent[]> {
   const allEvents: PolymarketEvent[] = []
   let offset = 0
 
-  while (true) {
+  while (allEvents.length < MAX_EVENTS) {
     const page = await fetchPolymarketEventsPage(offset)
 
-    if (page.length === 0) {
-      console.log(`[polymarket] Empty page at offset ${offset}. Stopping pagination.`)
-      break
-    }
+    if (page.length === 0) break
 
     allEvents.push(...page)
-    console.log(`[polymarket] Total events so far: ${allEvents.length}`)
 
-    if (page.length < PAGE_LIMIT) {
-      console.log(`[polymarket] Last page reached (${page.length} < ${PAGE_LIMIT}). Stopping.`)
-      break
-    }
+    // Stop when we have enough or the API returned a short page (last page).
+    if (page.length < PAGE_LIMIT || allEvents.length >= MAX_EVENTS) break
 
     offset += PAGE_LIMIT
-    await sleep(DELAY_MS)
   }
 
-  console.log(`[polymarket] Fetched ${allEvents.length} total active events.`)
-  return allEvents
+  // Trim to hard cap in case the last page pushed us slightly over.
+  return allEvents.slice(0, MAX_EVENTS)
 }
 
 function parseStringArray(raw: string | undefined | null): string[] {
@@ -163,9 +159,16 @@ export function normalizePolymarketMarkets(events: PolymarketEvent[]): Normalize
   return markets
 }
 
-export async function fetchAllActivePolymarketMarkets(): Promise<NormalizedMarket[]> {
-  const events = await fetchAllActivePolymarketEvents()
-  const markets = normalizePolymarketMarkets(events)
-  console.log(`[polymarket] Normalized ${markets.length} markets from ${events.length} events.`)
-  return markets
+async function _fetchAllActivePolymarketMarkets(): Promise<NormalizedMarket[]> {
+  const events = await fetchActivePolymarketEvents()
+  return normalizePolymarketMarkets(events)
 }
+
+// Cache the entire normalized result for 5 minutes so concurrent requests
+// don't all trigger parallel Gamma API crawls. Only the first request per
+// revalidation window pays the fetch cost; all others hit the cache instantly.
+export const fetchAllActivePolymarketMarkets = unstable_cache(
+  _fetchAllActivePolymarketMarkets,
+  ['polymarket-active-markets'],
+  { revalidate: 300, tags: ['polymarket-markets'] }
+)
