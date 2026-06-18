@@ -7,52 +7,7 @@ import Link from 'next/link'
 import { MarketsListClient } from '@/components/markets/markets-list-client'
 import { AlertCircle } from 'lucide-react'
 import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'
-import type { MarketsApiResponse, NormalizedMarket, RiskLevel } from '@/lib/types'
-
-// ── Server-side pre-filter ────────────────────────────────────────────────────
-// Mirrors the client-side filter logic so the first paint is already filtered.
-// The client takes over from there (pagination, further re-filtering on change).
-
-const RISK_ORDER: Record<RiskLevel, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 }
-
-function applyFilters(
-  markets: NormalizedMarket[],
-  q: string,
-  risk: string,
-  minvol: number,
-  sort: string,
-): NormalizedMarket[] {
-  let result = markets
-
-  if (q) {
-    const lower = q.toLowerCase()
-    result = result.filter((m) =>
-      m.question.toLowerCase().includes(lower) ||
-      m.eventCategory?.toLowerCase().includes(lower)
-    )
-  }
-
-  if (risk && risk !== 'all' && risk !== 'Starred') {
-    result = result.filter((m) => m.score.riskLevel === risk)
-  }
-
-  if (minvol > 0) {
-    result = result.filter((m) => m.volume >= minvol)
-  }
-
-  result = [...result].sort((a, b) => {
-    switch (sort) {
-      case 'score-desc':    return b.score.totalScore - a.score.totalScore
-      case 'volume-desc':   return b.volume - a.volume
-      case 'volume-asc':    return a.volume - b.volume
-      case 'enddate-asc':   return (a.endDate ?? '').localeCompare(b.endDate ?? '')
-      case 'risk':          return RISK_ORDER[a.score.riskLevel] - RISK_ORDER[b.score.riskLevel]
-      default:              return a.score.totalScore - b.score.totalScore // score-asc
-    }
-  })
-
-  return result
-}
+import type { MarketsApiResponse } from '@/lib/types'
 
 // ── Dynamic metadata ──────────────────────────────────────────────────────────
 
@@ -96,18 +51,10 @@ async function getMarkets(): Promise<MarketsApiResponse> {
   }
 }
 
-async function MarketsContent({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const sp  = await searchParams
-  const q      = typeof sp.q      === 'string' ? sp.q      : ''
-  const risk   = typeof sp.risk   === 'string' ? sp.risk   : 'all'
-  const minvol = typeof sp.minvol === 'string' ? Number(sp.minvol) : 0
-  const sort   = typeof sp.sort   === 'string' ? sp.sort   : 'score-asc'
-
+async function MarketsContent() {
   try {
     const data = await getMarkets()
-    // Pre-filter server-side so the initial HTML already contains the right set
-    const preFiltered = applyFilters(data.markets, q, risk, minvol, sort)
-    return <MarketsListClient markets={preFiltered} />
+    return <MarketsListClient markets={data.markets} />
   } catch (err) {
     return (
       <div className="flex items-center gap-3 text-sm border border-destructive/40 px-5 py-4 text-destructive">
@@ -171,7 +118,7 @@ export default async function MarketsPage({
         </div>
 
         <Suspense fallback={<MarketsSkeleton />}>
-          <MarketsContent searchParams={searchParams} />
+          <MarketsContent />
         </Suspense>
       </main>
       <PageFooter />

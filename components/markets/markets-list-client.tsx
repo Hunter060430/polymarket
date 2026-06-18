@@ -28,48 +28,79 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
   const [focusedIndex, setFocusedIndex] = useState(-1)
   const { watchlist } = useWatchlist()
 
-  // Read state from URL; fall back to defaults
-  const query      = searchParams.get('q')         ?? ''
-  const riskFilter = searchParams.get('risk')      ?? 'all'
-  const minVolume  = searchParams.get('minvol')    ?? '0'
-  const sortBy     = searchParams.get('sort')      ?? 'score-asc'
-  const page       = Number(searchParams.get('page') ?? '1')
+  // Interactive filters — pure client-side state, no URL round-trips on every
+  // keystroke. Only the "shareable" params (sort, risk) live in the URL.
+  const [query,      setQuery]      = useState('')
+  const [riskFilter, setRiskFilter] = useState(() => searchParams.get('risk') ?? 'all')
+  const [minVolume,  setMinVolume]  = useState(() => searchParams.get('minvol') ?? '0')
+  const [sortBy,     setSortBy]     = useState(() => searchParams.get('sort') ?? 'score-asc')
+  const [page,       setPageState]  = useState(1)
 
-  // Push updated params to URL
-  const setParam = useCallback((key: string, value: string, resetPage = true) => {
+  // Sync shareable params to URL without causing a server round-trip
+  const syncUrl = useCallback((updates: Record<string, string>) => {
     const params = new URLSearchParams(searchParams.toString())
-    if (value === '' || value === 'all' || value === '0') {
-      params.delete(key)
-    } else {
-      params.set(key, value)
+    for (const [key, value] of Object.entries(updates)) {
+      if (!value || value === 'all' || value === '0' || value === 'score-asc') {
+        params.delete(key)
+      } else {
+        params.set(key, value)
+      }
     }
-    if (resetPage) params.delete('page')
+    params.delete('page')
     router.replace(`?${params.toString()}`, { scroll: false })
   }, [router, searchParams])
 
-  const setPage = useCallback((p: number) => {
-    const params = new URLSearchParams(searchParams.toString())
-    if (p <= 1) { params.delete('page') } else { params.set('page', String(p)) }
-    router.replace(`?${params.toString()}`, { scroll: false })
-  }, [router, searchParams])
+  const handleRiskChange = useCallback((v: string) => {
+    setRiskFilter(v)
+    setPageState(1)
+    syncUrl({ risk: v })
+  }, [syncUrl])
+
+  const handleMinvolChange = useCallback((v: string) => {
+    setMinVolume(v)
+    setPageState(1)
+    syncUrl({ minvol: v })
+  }, [syncUrl])
+
+  const handleSortChange = useCallback((v: string) => {
+    setSortBy(v)
+    setPageState(1)
+    syncUrl({ sort: v })
+  }, [syncUrl])
 
   const clearFilters = useCallback(() => {
-    router.replace('?', { scroll: false })
+    setQuery('')
+    setRiskFilter('all')
+    setMinVolume('0')
+    setSortBy('score-asc')
+    setPageState(1)
     setFocusedIndex(-1)
+    router.replace('?', { scroll: false })
   }, [router])
 
   const filtered = useMemo(() => {
-    const result = markets.filter((m) => {
-      if (query) {
-        const q = query.toLowerCase()
-        if (!m.question.toLowerCase().includes(q) && !m.eventTitle.toLowerCase().includes(q) && !m.eventCategory.toLowerCase().includes(q))
-          return false
-      }
-      if (riskFilter === 'Starred') { if (!watchlist.has(m.marketId)) return false }
-      else if (riskFilter !== 'all' && m.score.riskLevel !== riskFilter) return false
-      if (m.volume < (parseFloat(minVolume) || 0)) return false
-      return true
-    })
+    let result = markets
+
+    if (query.trim()) {
+      const q = query.toLowerCase()
+      result = result.filter(
+        (m) =>
+          m.question.toLowerCase().includes(q) ||
+          m.eventTitle.toLowerCase().includes(q) ||
+          m.eventCategory.toLowerCase().includes(q),
+      )
+    }
+
+    if (riskFilter === 'Starred') {
+      result = result.filter((m) => watchlist.has(m.marketId))
+    } else if (riskFilter !== 'all') {
+      result = result.filter((m) => m.score.riskLevel === riskFilter)
+    }
+
+    const minvol = parseFloat(minVolume) || 0
+    if (minvol > 0) {
+      result = result.filter((m) => m.volume >= minvol)
+    }
 
     return [...result].sort((a, b) => {
       switch (sortBy) {
@@ -86,7 +117,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
         default:     return 0
       }
     })
-  }, [markets, query, riskFilter, minVolume, sortBy])
+  }, [markets, query, riskFilter, minVolume, sortBy, watchlist])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage   = Math.min(page, totalPages)
@@ -106,7 +137,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
 
       {/* ── Filter bar ─────────────────────────────────────── */}
       <div className="border border-border border-b-0 bg-secondary/20 px-3 sm:px-4 py-3 flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 items-stretch sm:items-center">
-        {/* Search — full width on mobile */}
+        {/* Search */}
         <div className="relative w-full sm:flex-1 sm:min-w-[180px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" aria-hidden="true" />
           <Input
@@ -114,14 +145,14 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
             placeholder="Search markets... (press / to focus)"
             className="pl-9 text-xs h-8 bg-background border-border w-full"
             value={query}
-            onChange={(e) => setParam('q', e.target.value)}
+            onChange={(e) => { setQuery(e.target.value); setPageState(1) }}
             aria-label="Search markets"
           />
         </div>
 
-        {/* Selects — row of 3 on mobile */}
+        {/* Selects */}
         <div className="flex gap-2 flex-wrap">
-          <Select value={riskFilter} onValueChange={(v) => v && setParam('risk', v)}>
+          <Select value={riskFilter} onValueChange={(v) => v && handleRiskChange(v)}>
             <SelectTrigger className="w-[calc(50%-4px)] sm:w-36 text-xs h-8 bg-background border-border" aria-label="Risk level filter">
               <SelectValue placeholder="Risk level" />
             </SelectTrigger>
@@ -135,7 +166,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
             </SelectContent>
           </Select>
 
-          <Select value={minVolume} onValueChange={(v) => v && setParam('minvol', v)}>
+          <Select value={minVolume} onValueChange={(v) => v && handleMinvolChange(v)}>
             <SelectTrigger className="w-[calc(50%-4px)] sm:w-32 text-xs h-8 bg-background border-border" aria-label="Minimum volume">
               <SelectValue placeholder="Min volume" />
             </SelectTrigger>
@@ -149,7 +180,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
             </SelectContent>
           </Select>
 
-          <Select value={sortBy} onValueChange={(v) => v && setParam('sort', v)}>
+          <Select value={sortBy} onValueChange={(v) => v && handleSortChange(v)}>
             <SelectTrigger className="w-full sm:w-44 text-xs h-8 bg-background border-border" aria-label="Sort by">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
@@ -209,18 +240,18 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
                   'flex items-center gap-3 sm:gap-5 px-3 sm:px-5 py-3 sm:py-4 hover:bg-secondary/25 transition-colors cursor-default',
                   isCritical && '[border-left:2px_solid_var(--risk-critical)]',
                   isHigh     && '[border-left:2px_solid_var(--risk-high)]',
-                  isFocused  && 'bg-secondary/40 outline outline-1 outline-primary/40'
+                  isFocused  && 'bg-secondary/40 outline outline-1 outline-primary/40',
                 )}
               >
-                {/* Score number */}
+                {/* Score */}
                 <div className="shrink-0 w-8 sm:w-10 text-center">
                   <span
                     className="font-heading text-2xl sm:text-3xl font-light tabular-nums leading-none"
                     style={{
                       color:
-                        market.score.riskLevel === 'Low'      ? 'var(--risk-low)' :
-                        market.score.riskLevel === 'Medium'   ? 'var(--risk-medium)' :
-                        market.score.riskLevel === 'High'     ? 'var(--risk-high)' :
+                        market.score.riskLevel === 'Low'    ? 'var(--risk-low)' :
+                        market.score.riskLevel === 'Medium' ? 'var(--risk-medium)' :
+                        market.score.riskLevel === 'High'   ? 'var(--risk-high)' :
                         'var(--risk-critical)',
                     }}
                   >
@@ -228,7 +259,6 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
                   </span>
                 </div>
 
-                {/* Thin divider */}
                 <div className="w-px self-stretch bg-border shrink-0" aria-hidden="true" />
 
                 {/* Content */}
@@ -252,7 +282,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
                   </div>
                 </div>
 
-                {/* Outcome price — YES probability */}
+                {/* YES probability */}
                 {market.outcomePrices.length > 0 && (
                   <div className="shrink-0 hidden sm:flex flex-col items-end gap-0.5">
                     <span
@@ -272,7 +302,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
                   </div>
                 )}
 
-                {/* Meta — hidden on xs, visible sm+ */}
+                {/* Volume / date */}
                 <div className="shrink-0 hidden md:flex flex-col items-end gap-1 text-xs text-muted-foreground">
                   <span className="tabular-nums font-medium">{formatVolume(market.volume)}</span>
                   {market.endDate && <span>{formatDate(market.endDate)}</span>}
@@ -298,36 +328,48 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
       {/* ── Pagination ─────────────────────────────────────── */}
       {totalPages > 1 && (
         <div className="border border-border border-t-0 px-4 py-3 flex items-center justify-center gap-1" role="navigation" aria-label="Pagination">
-          <Button variant="ghost" size="sm" onClick={() => setPage(Math.max(1, safePage - 1))} disabled={safePage <= 1} aria-label="Previous page" className="text-xs h-8 px-3">
+          <Button
+            variant="ghost" size="sm"
+            onClick={() => setPageState(Math.max(1, safePage - 1))}
+            disabled={safePage <= 1}
+            aria-label="Previous page"
+            className="text-xs h-8 px-3"
+          >
             <ChevronLeft className="size-3.5 mr-1" aria-hidden="true" />Prev
           </Button>
 
           {Array.from({ length: totalPages }, (_, i) => i + 1)
             .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 2)
-            .reduce<(number | '…')[]>((acc, p, idx, arr) => {
-              if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push('…')
+            .reduce<(number | '...')[]>((acc, p, idx, arr) => {
+              if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push('...')
               acc.push(p)
               return acc
             }, [])
             .map((item, idx) =>
-              item === '…' ? (
-                <span key={`e-${idx}`} className="px-1 text-xs text-muted-foreground">…</span>
+              item === '...' ? (
+                <span key={`e-${idx}`} className="px-1 text-xs text-muted-foreground">...</span>
               ) : (
-                  <Button
+                <Button
                   key={item}
                   variant={item === safePage ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() => setPage(item as number)}
+                  onClick={() => setPageState(item as number)}
                   aria-label={`Page ${item}`}
                   aria-current={item === safePage ? 'page' : undefined}
                   className="size-8 p-0 text-xs"
                 >
                   {item}
                 </Button>
-              )
+              ),
             )}
 
-          <Button variant="ghost" size="sm" onClick={() => setPage(Math.min(totalPages, safePage + 1))} disabled={safePage >= totalPages} aria-label="Next page" className="text-xs h-8 px-3">
+          <Button
+            variant="ghost" size="sm"
+            onClick={() => setPageState(Math.min(totalPages, safePage + 1))}
+            disabled={safePage >= totalPages}
+            aria-label="Next page"
+            className="text-xs h-8 px-3"
+          >
             Next<ChevronRight className="size-3.5 ml-1" aria-hidden="true" />
           </Button>
         </div>
