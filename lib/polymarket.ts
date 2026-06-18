@@ -123,6 +123,15 @@ export function normalizePolymarketMarkets(events: PolymarketEvent[]): Normalize
         endDate,
       })
 
+      // Oracle / resolution metadata — Gamma sometimes includes UMA fields.
+      const umaStatus = (market.umaResolutionStatus ?? '').toString()
+      const resolvedBy = market.resolvedBy
+        ? String(market.resolvedBy)
+        : umaStatus
+        ? 'UMA Optimistic Oracle'
+        : ''
+      const hasDisputeSignal = /disput|challeng|propos|reject/i.test(umaStatus)
+
       markets.push({
         eventId: event.id ?? '',
         eventTitle: event.title ?? '',
@@ -143,6 +152,13 @@ export function normalizePolymarketMarkets(events: PolymarketEvent[]): Normalize
         active: market.active ?? false,
         closed: market.closed ?? false,
         score,
+        oneDayPriceChange: parseNumber(market.oneDayPriceChange),
+        volume24hr: parseNumber(market.volume24hr),
+        oracle: {
+          resolvedBy,
+          umaResolutionStatus: umaStatus,
+          hasDisputeSignal,
+        },
       })
     }
   }

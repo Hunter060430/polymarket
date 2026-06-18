@@ -249,23 +249,76 @@ export default function MethodologyPage() {
           </div>
         </section>
 
-        {/* ── Limitations ───────────────────────────────── */}
+        {/* ── Confidence & Limitations ──────────────────── */}
         <section>
-          <h2 className="font-heading text-3xl font-light text-foreground mb-6">Limitations</h2>
+          <h2 className="font-heading text-3xl font-light text-foreground mb-3">
+            Known Limitations &amp; Confidence
+          </h2>
+          <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl mb-8">
+            Verdict is a transparent heuristic, not a precise science. We believe stating its limits
+            openly makes the score more useful, not less. Here is exactly where the model can be wrong.
+          </p>
+
+          {/* Confidence banner */}
+          <div className="border-l-2 border-primary pl-5 py-1 mb-10">
+            <p className="text-sm text-foreground leading-relaxed">
+              Treat each score as accurate to roughly <span className="font-medium">±8 points</span>.
+              A market scoring 62 and one scoring 68 are effectively equivalent. The risk
+              <span className="italic"> bands</span> (Low / Medium / High / Critical) are more
+              meaningful than the exact number.
+            </p>
+          </div>
+
+          {/* Known failure modes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-border border border-border mb-10">
+            {[
+              {
+                title: 'False positives (scores too high)',
+                items: [
+                  'Verbose padding: a description stuffed with boilerplate legal language scores well on length-based signals without actually being clearer.',
+                  'Keyword gaming: naming an "official source" earns points even if that source does not actually adjudicate the specific question.',
+                  'Template reuse: well-structured templates inherit a high baseline even when the specific event is genuinely ambiguous.',
+                ],
+              },
+              {
+                title: 'False negatives (scores too low)',
+                items: [
+                  'Self-evident questions: "Will BTC be above $100k on Jan 1?" needs little prose, yet is penalised for a short description.',
+                  'External rulebooks: markets that link to a comprehensive off-site rulebook are under-credited because the text itself looks thin.',
+                  'Non-English or symbol-heavy phrasing can suppress keyword matches that would otherwise add points.',
+                ],
+              },
+            ].map((col) => (
+              <div key={col.title} className="bg-background px-5 py-5">
+                <p className="text-xs tracking-[0.1em] uppercase text-foreground mb-4">{col.title}</p>
+                <ul className="flex flex-col gap-3">
+                  {col.items.map((item, i) => (
+                    <li key={i} className="text-xs text-muted-foreground leading-relaxed flex gap-2.5">
+                      <span className="text-border mt-0.5 shrink-0" aria-hidden="true">—</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          {/* Scope statements */}
           <div className="flex flex-col gap-4 text-sm text-muted-foreground leading-relaxed">
             <p>
-              The v1 model does not evaluate the quality of the underlying event being measured, the
-              financial integrity of the platform, or the historical resolution record of similar
-              markets. It evaluates only the written clarity of the resolution criteria.
+              The model does <span className="text-foreground">not</span> evaluate the quality of the
+              underlying event, the financial integrity of the platform, the on-chain dispute history,
+              or the track record of similar markets. It evaluates only the written clarity of the
+              resolution criteria as published by the market creator.
             </p>
             <p>
-              Text heuristics can be gamed by adding verbose but meaningless language to a description.
-              Future versions will incorporate resolution history, community-flagged disputes, and
-              AI-assisted semantic analysis to reduce this risk.
+              Because the engine is rule-based, every score is fully reproducible and auditable — the
+              per-market <span className="text-foreground">scoring trace</span> on each market page
+              shows exactly which terms triggered each adjustment. There is no black box.
             </p>
             <p>
-              This index is operated independently and has no affiliation with Polymarket or any other
-              prediction market platform.
+              Verdict is operated independently and has no affiliation with Polymarket or any other
+              prediction market platform. Scores are not legal or financial advice.
             </p>
           </div>
         </section>

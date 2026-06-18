@@ -2,11 +2,13 @@ import { notFound } from 'next/navigation'
 import { Nav, PageFooter } from '@/components/nav'
 import { RiskBadge } from '@/components/risk-badge'
 import { ScoreBreakdown } from '@/components/markets/score-breakdown'
+import { ScoringTrace } from '@/components/markets/scoring-trace'
+import { OraclePanel } from '@/components/markets/oracle-panel'
 import { ShareButton } from '@/components/markets/share-button'
 import { StarButton } from '@/components/markets/star-button'
-import { ExternalLink, Calendar, DollarSign, Droplets, FileText, ArrowLeft, ArrowRight } from 'lucide-react'
+import { ExternalLink, Calendar, DollarSign, Droplets, FileText, ArrowLeft, ArrowRight, TrendingUp, TrendingDown } from 'lucide-react'
 import { fetchAllActivePolymarketMarkets, fetchMarketById } from '@/lib/polymarket'
-import { formatVolume } from '@/lib/utils'
+import { formatVolume, polymarketUrl, formatPriceChange } from '@/lib/utils'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import type { NormalizedMarket } from '@/lib/types'
@@ -111,6 +113,7 @@ export default async function MarketDetailPage({
   if (!market) notFound()
 
   const { score } = market
+  const priceChange = formatPriceChange(market.oneDayPriceChange)
   const scoreColor =
     score.riskLevel === 'Low'      ? 'var(--risk-low)'      :
     score.riskLevel === 'Medium'   ? 'var(--risk-medium)'   :
@@ -205,6 +208,18 @@ export default async function MarketDetailPage({
           <h2 className="font-heading text-2xl font-light text-foreground mb-1">Score Breakdown</h2>
           <p className="text-xs tracking-wide text-muted-foreground mb-6 uppercase">Six weighted criteria</p>
           <ScoreBreakdown breakdown={score.breakdown} dimensionDetails={score.dimensionDetails} />
+          {score.trace && (
+            <div className="mt-6">
+              <ScoringTrace trace={score.trace} breakdown={score.breakdown} />
+            </div>
+          )}
+        </section>
+
+        {/* ── Resolution & Oracle ───────────────────────── */}
+        <section className="border-b border-border pb-8 sm:pb-10 mb-8 sm:mb-10">
+          <h2 className="font-heading text-2xl font-light text-foreground mb-1">Resolution &amp; Oracle</h2>
+          <p className="text-xs tracking-wide text-muted-foreground mb-6 uppercase">How this market settles</p>
+          <OraclePanel oracle={market.oracle} conditionId={market.conditionId} />
         </section>
 
         {/* ── Market Details ─────────────────────────────── */}
@@ -220,11 +235,37 @@ export default async function MarketDetailPage({
             </div>
             <div className="px-4 sm:px-5 py-4">
               <p className="text-xs tracking-[0.08em] uppercase text-muted-foreground mb-2 flex items-center gap-1.5">
+                {priceChange && market.oneDayPriceChange < 0
+                  ? <TrendingDown className="size-3" aria-hidden="true" />
+                  : <TrendingUp className="size-3" aria-hidden="true" />}
+                24h Change
+              </p>
+              {priceChange ? (
+                <p
+                  className="font-heading text-xl sm:text-2xl font-light tabular-nums"
+                  style={{ color: market.oneDayPriceChange >= 0 ? 'var(--risk-low)' : 'var(--risk-critical)' }}
+                >
+                  {priceChange}
+                </p>
+              ) : (
+                <p className="font-heading text-xl sm:text-2xl font-light tabular-nums text-muted-foreground">—</p>
+              )}
+            </div>
+            <div className="px-4 sm:px-5 py-4">
+              <p className="text-xs tracking-[0.08em] uppercase text-muted-foreground mb-2 flex items-center gap-1.5">
                 <Droplets className="size-3" aria-hidden="true" />Liquidity
               </p>
               <p className="font-heading text-xl sm:text-2xl font-light tabular-nums">{formatVolume(market.liquidity)}</p>
             </div>
-            <div className="px-4 sm:px-5 py-4 col-span-2">
+            <div className="px-4 sm:px-5 py-4">
+              <p className="text-xs tracking-[0.08em] uppercase text-muted-foreground mb-2 flex items-center gap-1.5">
+                <DollarSign className="size-3" aria-hidden="true" />24h Volume
+              </p>
+              <p className="font-heading text-xl sm:text-2xl font-light tabular-nums">
+                {market.volume24hr > 0 ? formatVolume(market.volume24hr) : '—'}
+              </p>
+            </div>
+            <div className="px-4 sm:px-5 py-4 col-span-2 sm:col-span-4">
               <p className="text-xs tracking-[0.08em] uppercase text-muted-foreground mb-2 flex items-center gap-1.5">
                 <Calendar className="size-3" aria-hidden="true" />End Date
               </p>
@@ -275,12 +316,12 @@ export default async function MarketDetailPage({
         {market.marketSlug && (
           <div className="border-b border-border pb-8 sm:pb-10 mb-8 sm:mb-10">
             <a
-              href={`https://polymarket.com/market/${market.marketSlug}`}
+              href={polymarketUrl(market.marketSlug)}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 text-xs tracking-[0.08em] uppercase text-primary hover:underline underline-offset-4"
             >
-              View on Polymarket
+              Trade on Polymarket
               <ExternalLink className="size-3" aria-hidden="true" />
             </a>
           </div>

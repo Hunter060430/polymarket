@@ -13,6 +13,16 @@ export interface PolymarketMarket {
   clobTokenIds?: string
   active?: boolean
   closed?: boolean
+  // Market dynamics (Gamma API)
+  oneDayPriceChange?: number
+  volume24hr?: string | number
+  // Oracle / resolution (UMA) — present on some Gamma responses
+  umaResolutionStatus?: string
+  umaBond?: string | number
+  umaReward?: string | number
+  hasReviewedDates?: boolean
+  resolvedBy?: string
+  umaEndDate?: string
 }
 
 export interface PolymarketEvent {
@@ -36,6 +46,14 @@ export interface RuleClarityBreakdown {
 
 export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical'
 
+// A single rule that fired during scoring — used to show users *why* a
+// dimension received the score it did (the "scoring trace").
+export interface ScoreTraceEntry {
+  rule: string      // human-readable rule name
+  delta: number     // points added (+) or removed (-)
+  matched?: string  // the word/phrase or condition that triggered it
+}
+
 export interface RuleClarityScore {
   totalScore: number
   riskLevel: RiskLevel
@@ -43,6 +61,7 @@ export interface RuleClarityScore {
   flags: string[]
   summary: string
   dimensionDetails?: Record<keyof RuleClarityBreakdown, string>
+  trace?: Record<keyof RuleClarityBreakdown, ScoreTraceEntry[]>
 }
 
 export interface NormalizedMarket {
@@ -65,6 +84,15 @@ export interface NormalizedMarket {
   active: boolean
   closed: boolean
   score: RuleClarityScore
+  // Market dynamics
+  oneDayPriceChange: number   // signed fraction, e.g. +0.052 = +5.2pp
+  volume24hr: number
+  // Oracle / resolution metadata (may be empty when Gamma omits it)
+  oracle: {
+    resolvedBy: string          // e.g. "UMA Optimistic Oracle" or ''
+    umaResolutionStatus: string // e.g. "resolved", "disputed", or ''
+    hasDisputeSignal: boolean    // true when status indicates a dispute/challenge
+  }
 }
 
 export interface MarketsApiResponse {

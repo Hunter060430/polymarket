@@ -1,4 +1,4 @@
-import type { RuleClarityScore, RuleClarityBreakdown, RiskLevel } from './types'
+import type { RuleClarityScore, RuleClarityBreakdown, RiskLevel, ScoreTraceEntry } from './types'
 
 // ─── Vocabulary lists ────────────────────────────────────────────────────────
 
@@ -23,40 +23,52 @@ function includes(text: string, terms: string[]): boolean {
   return terms.some((t) => lower.includes(t.toLowerCase()))
 }
 
+// Returns the first matching term (for trace display), or '' if none match.
+function firstMatch(text: string, terms: string[]): string {
+  const lower = text.toLowerCase()
+  return terms.find((t) => lower.includes(t.toLowerCase())) ?? ''
+}
+
 function wordCount(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length
 }
 
 // ─── 1. Time Clarity (max 20) ────────────────────────────────────────────────
-// Generous baseline: most markets with a question + description get a decent
-// starting score. Bonuses for specificity; minor penalty for vagueness only.
 
-function scoreTimeClarity(question: string, description: string): { score: number; details: string; flags: string[] } {
+function scoreTimeClarity(question: string, description: string) {
   const flags: string[] = []
+  const trace: ScoreTraceEntry[] = []
   const combined = `${question} ${description}`
 
-  // Baseline: 10 points just for having a question with a date reference
   let score = 10
+  trace.push({ rule: 'Baseline (has a question)', delta: 10 })
 
-  // +4 if a specific month or year is named
   const hasSpecificDate = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b|\b20\d{2}\b/i.test(combined)
-  if (hasSpecificDate) score += 4
+  if (hasSpecificDate) {
+    score += 4
+    const m = combined.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b|\b20\d{2}\b/i)
+    trace.push({ rule: 'Specific month or year named', delta: 4, matched: m?.[0] })
+  }
 
-  // +3 if an explicit time anchor is used
-  if (includes(combined, TIME_ANCHOR_WORDS)) score += 3
-
-  // +3 if timezone specified (independent of time anchor)
-  if (includes(combined, TIMEZONE_WORDS)) {
+  const anchor = firstMatch(combined, TIME_ANCHOR_WORDS)
+  if (anchor) {
     score += 3
-  } else if (includes(combined, TIME_ANCHOR_WORDS)) {
-    // Minor penalty: time anchor without timezone
+    trace.push({ rule: 'Explicit time anchor used', delta: 3, matched: anchor })
+  }
+
+  const tz = firstMatch(combined, TIMEZONE_WORDS)
+  if (tz) {
+    score += 3
+    trace.push({ rule: 'Timezone specified', delta: 3, matched: tz })
+  } else if (anchor) {
     score -= 1
+    trace.push({ rule: 'Time anchor without timezone', delta: -1, matched: anchor })
     flags.push('Time-sensitive language used without explicit timezone.')
   }
 
-  // Penalty for no description at all
   if (!description || description.trim().length < 10) {
     score -= 5
+    trace.push({ rule: 'No / empty description', delta: -5 })
     flags.push('No description — time parameters cannot be fully evaluated.')
   }
 
@@ -68,33 +80,42 @@ function scoreTimeClarity(question: string, description: string): { score: numbe
     : capped >= 8
     ? 'Resolution timeline is present but could be more precisely specified.'
     : 'Resolution timeline is vague or missing from the description.'
-  return { score: capped, details, flags }
+  return { score: capped, details, flags, trace }
 }
 
 // ─── 2. Resolution Source (max 20) ───────────────────────────────────────────
 
-function scoreResolutionSource(description: string, resolutionSource: string): { score: number; details: string; flags: string[] } {
+function scoreResolutionSource(description: string, resolutionSource: string) {
   const flags: string[] = []
+  const trace: ScoreTraceEntry[] = []
 
-  // Baseline: 8 points for any non-empty source
-  let score = resolutionSource && resolutionSource.trim().length > 0 ? 8 : 4
+  const hasSource = resolutionSource && resolutionSource.trim().length > 0
+  let score = hasSource ? 8 : 4
+  trace.push({ rule: hasSource ? 'Resolution source present' : 'No resolution source field', delta: hasSource ? 8 : 4 })
 
-  if (!resolutionSource || resolutionSource.trim().length === 0) {
+  if (!hasSource) {
     flags.push('No explicit resolution source URL or reference provided.')
   } else if (/https?:\/\//.test(resolutionSource)) {
-    // Named URL is the gold standard
     score += 4
+    trace.push({ rule: 'Named source URL provided', delta: 4 })
   }
 
-  if (includes(description, OFFICIAL_SOURCE_WORDS)) score += 5
+  const official = firstMatch(description, OFFICIAL_SOURCE_WORDS)
+  if (official) {
+    score += 5
+    trace.push({ rule: 'Authoritative source named', delta: 5, matched: official })
+  }
 
   const lower = description.toLowerCase()
   if (lower.includes('primary') || lower.includes('secondary') || lower.includes('in the event')) {
     score += 3
+    trace.push({ rule: 'Primary/secondary source fallback defined', delta: 3 })
   }
 
-  if (includes(description, VAGUE_SOURCE_WORDS)) {
+  const vague = firstMatch(description, VAGUE_SOURCE_WORDS)
+  if (vague) {
     score -= 3
+    trace.push({ rule: 'Vague source language', delta: -3, matched: vague })
     flags.push('Resolution source relies on vague terms such as "credible reporting" or "substantial evidence".')
   }
 
@@ -106,37 +127,46 @@ function scoreResolutionSource(description: string, resolutionSource: string): {
     : capped >= 8
     ? 'A resolution source is indicated but lacks specificity or a verifiable URL.'
     : 'Resolution source is absent or relies on vague, unverifiable references.'
-  return { score: capped, details, flags }
+  return { score: capped, details, flags, trace }
 }
 
 // ─── 3. Outcome Definition (max 20) ──────────────────────────────────────────
 
-function scoreOutcomeDefinition(question: string, description: string, outcomes: string[]): { score: number; details: string; flags: string[] } {
+function scoreOutcomeDefinition(question: string, description: string, outcomes: string[]) {
   const flags: string[] = []
+  const trace: ScoreTraceEntry[] = []
 
-  // Baseline: 8 points for a valid question
   let score = question.length > 0 ? 8 : 2
+  trace.push({ rule: question.length > 0 ? 'Baseline (valid question)' : 'Empty question', delta: question.length > 0 ? 8 : 2 })
 
   if (question.length > 200) {
     flags.push('Question is very long — may be difficult to parse at a glance.')
     score += 2
+    trace.push({ rule: 'Long, detailed question', delta: 2 })
   }
 
   const isBinary =
     outcomes.length === 2 &&
     outcomes.some((o) => o.toLowerCase() === 'yes') &&
     outcomes.some((o) => o.toLowerCase() === 'no')
-  if (isBinary) score += 4
+  if (isBinary) {
+    score += 4
+    trace.push({ rule: 'Clean binary YES/NO outcomes', delta: 4 })
+  }
 
   const lower = description.toLowerCase()
   if (lower.includes('resolv') && (lower.includes('yes') || lower.includes('will resolve'))) {
     score += 6
+    trace.push({ rule: 'Explicit resolution condition stated', delta: 6, matched: 'will resolve' })
   } else if (description.length > 80) {
     score += 3
+    trace.push({ rule: 'Substantive description present', delta: 3 })
   }
 
-  if (includes(question, AMBIGUOUS_WORDS) || includes(description, AMBIGUOUS_WORDS)) {
+  const ambiguous = firstMatch(question, AMBIGUOUS_WORDS) || firstMatch(description, AMBIGUOUS_WORDS)
+  if (ambiguous) {
     score -= 3
+    trace.push({ rule: 'Ambiguous qualifier used', delta: -3, matched: ambiguous })
     flags.push('Question or description contains ambiguous language (e.g. "significant", "major", "reportedly").')
   }
 
@@ -148,34 +178,35 @@ function scoreOutcomeDefinition(question: string, description: string, outcomes:
     : capped >= 8
     ? 'Outcome is broadly understandable but resolution criteria could be more explicit.'
     : 'Outcome definition is ambiguous or the resolution condition is not stated.'
-  return { score: capped, details, flags }
+  return { score: capped, details, flags, trace }
 }
 
 // ─── 4. Evidence Standard (max 15) ───────────────────────────────────────────
 
-function scoreEvidenceStandard(description: string): { score: number; details: string; flags: string[] } {
+function scoreEvidenceStandard(description: string) {
   const flags: string[] = []
+  const trace: ScoreTraceEntry[] = []
   const lower = description.toLowerCase()
 
-  // Baseline: 5 points for any description that has substance
   let score = description.length > 50 ? 5 : 2
+  trace.push({ rule: description.length > 50 ? 'Baseline (substantive description)' : 'Baseline (thin description)', delta: description.length > 50 ? 5 : 2 })
 
   const positivePhrases = ['counts as', 'qualifies as', 'is defined as', 'accepted evidence', 'valid evidence']
   const negativePhrases = ['does not count', 'will not be counted', 'excluded', 'not accepted', 'ineligible']
 
-  const hasPositive = positivePhrases.some((p) => lower.includes(p))
-  const hasNegative = negativePhrases.some((p) => lower.includes(p))
-  const hasEvidenceTypes = includes(description, EVIDENCE_TYPES)
+  const pos = positivePhrases.find((p) => lower.includes(p))
+  const neg = negativePhrases.find((p) => lower.includes(p))
+  const evType = firstMatch(description, EVIDENCE_TYPES)
 
-  if (hasPositive)     score += 4
-  if (hasNegative)     score += 3
-  if (hasEvidenceTypes) score += 3
+  if (pos)    { score += 4; trace.push({ rule: 'Defines what counts as evidence', delta: 4, matched: pos }) }
+  if (neg)    { score += 3; trace.push({ rule: 'Defines excluded evidence', delta: 3, matched: neg }) }
+  if (evType) { score += 3; trace.push({ rule: 'Names acceptable evidence types', delta: 3, matched: evType }) }
 
-  const hasUndefinedConfirmation = lower.includes('confirmation') && !hasPositive
-  const hasVagueCredible         = lower.includes('credible sources') && !hasPositive
-
+  const hasUndefinedConfirmation = lower.includes('confirmation') && !pos
+  const hasVagueCredible         = lower.includes('credible sources') && !pos
   if (hasUndefinedConfirmation || hasVagueCredible) {
     score -= 3
+    trace.push({ rule: 'Undefined "confirmation"/"credible sources"', delta: -3, matched: hasUndefinedConfirmation ? 'confirmation' : 'credible sources' })
     flags.push('Evidence standard depends on undefined "confirmation" or "credible sources".')
   }
 
@@ -187,32 +218,38 @@ function scoreEvidenceStandard(description: string): { score: number; details: s
     : capped >= 5
     ? 'Evidence standards are implied by context but not formally defined.'
     : 'No evidence standards specified — resolution criteria rely on subjective judgment.'
-  return { score: capped, details, flags }
+  return { score: capped, details, flags, trace }
 }
 
 // ─── 5. Edge Case Handling (max 15) ──────────────────────────────────────────
 
-function scoreEdgeCaseHandling(question: string, description: string): { score: number; details: string; flags: string[] } {
+function scoreEdgeCaseHandling(question: string, description: string) {
   const flags: string[] = []
+  const trace: ScoreTraceEntry[] = []
   const combined = `${question} ${description}`
   const lower = combined.toLowerCase()
 
-  // Baseline: 5 points — most markets implicitly handle standard cases
   let score = 5
+  trace.push({ rule: 'Baseline (standard cases assumed)', delta: 5 })
 
   if (lower.includes('delay') || lower.includes('delayed') || lower.includes('postpone')) {
     score += 4
+    trace.push({ rule: 'Addresses delays/postponement', delta: 4, matched: 'delay' })
   }
-  if (includes(combined, EDGE_CASE_WORDS)) {
+  const edge = firstMatch(combined, EDGE_CASE_WORDS)
+  if (edge) {
     score += 3
+    trace.push({ rule: 'Addresses edge cases', delta: 3, matched: edge })
   }
-  if (includes(combined, LATE_REPORTING_PHRASES)) {
+  const late = firstMatch(combined, LATE_REPORTING_PHRASES)
+  if (late) {
     score += 3
+    trace.push({ rule: 'Addresses late reporting', delta: 3, matched: late })
   }
 
-  // Small penalty only for very short descriptions with zero edge case coverage
   if (description.length < 100 && score === 5) {
     score -= 2
+    trace.push({ rule: 'Short description, no edge case coverage', delta: -2 })
     flags.push('Short description with no explicit edge case handling (delays, revisions, cancellations).')
   }
 
@@ -224,35 +261,39 @@ function scoreEdgeCaseHandling(question: string, description: string): { score: 
     : capped >= 5
     ? 'Basic edge cases may be implied but are not explicitly documented in the rules.'
     : 'No edge case handling — unexpected events could lead to disputed resolutions.'
-  return { score: capped, details, flags }
+  return { score: capped, details, flags, trace }
 }
 
 // ─── 6. Post-Trade Risk (max 10) ─────────────────────────────────────────────
 
-function scorePostHocRisk(description: string, resolutionSource: string, question: string): { score: number; details: string; flags: string[] } {
+function scorePostHocRisk(description: string, resolutionSource: string, question: string) {
   const flags: string[] = []
+  const trace: ScoreTraceEntry[] = []
   const combined = `${question} ${description}`
   const lower = combined.toLowerCase()
 
-  // Baseline: 7 points — most markets are not retroactively disputed
   let score = 7
+  trace.push({ rule: 'Baseline (low retroactive risk)', delta: 7 })
 
   if (wordCount(description) < 30) {
     score -= 3
+    trace.push({ rule: 'Very short description', delta: -3 })
     flags.push('Description is very short — resolution criteria may be underspecified.')
   } else if (wordCount(description) < 60) {
     score -= 1
+    trace.push({ rule: 'Short description', delta: -1 })
   }
 
   if (!resolutionSource || resolutionSource.trim().length === 0) {
     score -= 1
+    trace.push({ rule: 'No resolution source', delta: -1 })
   }
 
   const hasTimingConstraint = lower.includes('by ') || lower.includes('before ') || lower.includes('prior to')
-  const hasPostHocWord      = includes(combined, POST_HOC_TRIGGER_WORDS)
-
-  if (hasPostHocWord && !hasTimingConstraint) {
+  const postHoc = firstMatch(combined, POST_HOC_TRIGGER_WORDS)
+  if (postHoc && !hasTimingConstraint) {
     score -= 2
+    trace.push({ rule: 'Post-hoc trigger without timing constraint', delta: -2, matched: postHoc })
     flags.push('Resolution relies on "confirmed" or "announced" without a defined timing constraint.')
   }
 
@@ -264,12 +305,10 @@ function scorePostHocRisk(description: string, resolutionSource: string, questio
     : capped >= 5
     ? 'Moderate post-trade risk — some resolution criteria could be interpreted differently.'
     : 'Elevated post-trade risk — vague criteria may invite disputes after resolution.'
-  return { score: capped, details, flags }
+  return { score: capped, details, flags, trace }
 }
 
 // ─── Risk thresholds ─────────────────────────────────────────────────────────
-// Calibrated so that a typical well-written binary market scores 55–75 (Medium)
-// and only markets with genuinely poor specs fall below 40 (High/Critical).
 
 function getRiskLevel(totalScore: number): RiskLevel {
   if (totalScore >= 75) return 'Low'
@@ -369,6 +408,14 @@ export function calculateRuleClarityScore(params: {
       evidenceStandard:  es.details,
       edgeCaseHandling:  ec.details,
       postHocRisk:       ph.details,
+    },
+    trace: {
+      timeClarity:       tc.trace,
+      resolutionSource:  rs.trace,
+      outcomeDefinition: od.trace,
+      evidenceStandard:  es.trace,
+      edgeCaseHandling:  ec.trace,
+      postHocRisk:       ph.trace,
     },
   }
 }
