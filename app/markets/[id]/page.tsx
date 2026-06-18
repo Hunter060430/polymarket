@@ -11,15 +11,19 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import type { NormalizedMarket } from '@/lib/types'
 
-// Per-page fetch — still uses the shared cached result so no extra API calls
-async function getMarket(id: string): Promise<NormalizedMarket | null> {
+// Single fetch — reuse the same cached promise for both market + related.
+// Calling fetchAllActivePolymarketMarkets() multiple times in the same render
+// is safe (unstable_cache dedupes), but returning the full list once and
+// deriving everything from it avoids any risk of duplicate in-flight requests.
+async function getMarketAndRelated(id: string): Promise<{
+  market: NormalizedMarket | null
+  related: NormalizedMarket[]
+}> {
   const markets = await fetchAllActivePolymarketMarkets()
-  return markets.find((m) => m.marketId === id) ?? null
-}
+  const market = markets.find((m) => m.marketId === id) ?? null
+  if (!market) return { market: null, related: [] }
 
-async function getRelated(market: NormalizedMarket): Promise<NormalizedMarket[]> {
-  const markets = await fetchAllActivePolymarketMarkets()
-  return markets
+  const related = markets
     .filter(
       (m) =>
         m.marketId !== market.marketId &&
@@ -28,6 +32,8 @@ async function getRelated(market: NormalizedMarket): Promise<NormalizedMarket[]>
     )
     .sort((a, b) => a.score.totalScore - b.score.totalScore)
     .slice(0, 4)
+
+  return { market, related }
 }
 
 export async function generateMetadata({
@@ -36,7 +42,10 @@ export async function generateMetadata({
   params: Promise<{ id: string }>
 }): Promise<Metadata> {
   const { id } = await params
-  const market = await getMarket(id)
+  // generateMetadata and the page component both call getMarketAndRelated(id).
+  // Next.js deduplicates the underlying unstable_cache call within a render,
+  // so this does NOT trigger a second fetch.
+  const { market } = await getMarketAndRelated(id)
   if (!market) return { title: 'Market Not Found' }
 
   const { score } = market
@@ -81,10 +90,8 @@ export default async function MarketDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const [market, related] = await Promise.all([
-    getMarket(id),
-    getMarket(id).then((m) => (m ? getRelated(m) : [])),
-  ])
+  // Single awaited call — market + related derived from one cache read.
+  const { market, related } = await getMarketAndRelated(id)
   if (!market) notFound()
 
   const { score } = market
