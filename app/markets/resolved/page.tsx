@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { Suspense } from 'react'
 import { Nav, PageFooter } from '@/components/nav'
 import { MarketsListClient } from '@/components/markets/markets-list-client'
+import { ResolutionStats } from '@/components/markets/resolution-stats'
 import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import { fetchResolvedPolymarketMarkets } from '@/lib/polymarket'
 import Link from 'next/link'
@@ -23,7 +24,12 @@ async function ResolvedContent() {
         </div>
       )
     }
-    return <MarketsListClient markets={markets} />
+    return (
+      <div className="flex flex-col gap-8">
+        <ResolutionStats markets={markets} />
+        <MarketsListClient markets={markets} />
+      </div>
+    )
   } catch (err) {
     return (
       <div className="flex items-center gap-3 text-sm border border-destructive/40 px-5 py-4 text-destructive">

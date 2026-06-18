@@ -226,6 +226,7 @@ export function PageFooter() {
               <Link href="/methodology" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Methodology</Link>
               <Link href="/about"       className="text-xs text-muted-foreground hover:text-foreground transition-colors">About</Link>
               <Link href="/api-docs"    className="text-xs text-muted-foreground hover:text-foreground transition-colors">API Reference</Link>
+              <Link href="/pricing"     className="text-xs text-muted-foreground hover:text-foreground transition-colors">Pricing</Link>
               <a
                 href="https://gamma-api.polymarket.com"
                 target="_blank"

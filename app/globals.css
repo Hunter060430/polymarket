@@ -49,8 +49,6 @@
 }
 
 :root {
-  color-scheme: light;
-
   /* Pure white — not warm, not off-white. Dune is the contrast, not the background */
   --background:        oklch(1 0 0);
   --foreground:        oklch(0.14 0.016 55);       /* deep warm charcoal — ink on parchment */
@@ -109,8 +107,6 @@
 }
 
 .dark {
-  color-scheme: dark;
-
   /* Deep warm charcoal — ink becomes the canvas */
   --background:        oklch(0.16 0.014 55);
   --foreground:        oklch(0.93 0.006 70);       /* warm sand */

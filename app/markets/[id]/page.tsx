@@ -6,6 +6,7 @@ import { ScoringTrace } from '@/components/markets/scoring-trace'
 import { OraclePanel } from '@/components/markets/oracle-panel'
 import { ShareButton } from '@/components/markets/share-button'
 import { StarButton } from '@/components/markets/star-button'
+import { EmbedButton } from '@/components/markets/embed-button'
 import { ExternalLink, Calendar, DollarSign, Droplets, FileText, ArrowLeft, ArrowRight, TrendingUp, TrendingDown } from 'lucide-react'
 import { fetchAllActivePolymarketMarkets, fetchMarketById } from '@/lib/polymarket'
 import { formatVolume, polymarketUrl, formatPriceChange } from '@/lib/utils'
@@ -158,6 +159,7 @@ export default async function MarketDetailPage({
             )}
             <div className="flex items-center gap-3">
               <StarButton marketId={market.marketId} />
+              <EmbedButton marketId={market.marketId} />
               <ShareButton question={market.question} />
             </div>
           </div>
