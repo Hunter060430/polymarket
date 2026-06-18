@@ -44,6 +44,9 @@ export async function generateMetadata({
     ? market.question.slice(0, 67) + '…'
     : market.question
 
+  const ogUrl = `/api/og?q=${encodeURIComponent(market.question)}&score=${score.totalScore}&risk=${encodeURIComponent(score.riskLevel)}`
+  const ogImage = { url: ogUrl, width: 1200, height: 630, alt: title }
+
   return {
     title,
     description: `Verdict score ${score.totalScore}/100 — ${score.riskLevel} Risk. ${score.summary.slice(0, 140)}`,
@@ -51,11 +54,13 @@ export async function generateMetadata({
       title: `${title} — Verdict`,
       description: `Clarity score: ${score.totalScore}/100 (${score.riskLevel} Risk). ${score.flags[0] ?? ''}`,
       type: 'article',
+      images: [ogImage],
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image',
       title: `${title} — Verdict`,
       description: `Clarity score: ${score.totalScore}/100 (${score.riskLevel} Risk).`,
+      images: [ogUrl],
     },
   }
 }
