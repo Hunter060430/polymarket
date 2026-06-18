@@ -11,9 +11,10 @@ const NAV_LINKS = [
   { href: '/dashboard',        label: 'Dashboard'      },
   { href: '/markets',          label: 'Markets'        },
   { href: '/markets/resolved', label: 'Resolved'       },
-  { href: '/methodology',      label: 'Methodology'    },
-  { href: '/about',            label: 'About'          },
-  { href: '/submit-dispute',   label: 'Submit Dispute' },
+  { href: '/methodology',    label: 'Methodology'    },
+  { href: '/api-docs',       label: 'API'            },
+  { href: '/about',          label: 'About'          },
+  { href: '/submit-dispute', label: 'Submit Dispute' },
 ]
 
 export function Nav() {
@@ -189,6 +190,7 @@ export function PageFooter() {
             <nav className="flex flex-col gap-2.5" aria-label="Resources navigation">
               <Link href="/methodology" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Methodology</Link>
               <Link href="/about"       className="text-xs text-muted-foreground hover:text-foreground transition-colors">About</Link>
+              <Link href="/api-docs"    className="text-xs text-muted-foreground hover:text-foreground transition-colors">API Reference</Link>
               <a
                 href="https://gamma-api.polymarket.com"
                 target="_blank"

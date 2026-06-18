@@ -38,11 +38,20 @@ export const metadata: Metadata = {
     description: 'Independent scoring of Polymarket resolution quality. Know before you trade.',
     type: 'website',
     locale: 'en_US',
+    images: [
+      {
+        url: '/og.png',
+        width: 1200,
+        height: 630,
+        alt: 'Verdict — Prediction Market Clarity Index',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Verdict — Prediction Market Clarity Index',
     description: 'Independent scoring of Polymarket resolution quality. Know before you trade.',
+    images: ['/og.png'],
   },
   robots: { index: true, follow: true },
   generator: 'v0.app',

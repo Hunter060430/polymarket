@@ -197,6 +197,58 @@ export default function MethodologyPage() {
           </div>
         </section>
 
+        {/* ── Changelog ─────────────────────────────────── */}
+        <section className="border-b border-border pb-12 mb-12">
+          <h2 className="font-heading text-3xl font-light text-foreground mb-6">Version History</h2>
+          <div className="flex flex-col">
+            {[
+              {
+                version: 'v1.2',
+                date: 'Jun 2025',
+                changes: [
+                  'Raised all baseline scores — most markets now receive 40–70 (previously 20–50).',
+                  'Decoupled timezone bonus from time-anchor requirement in scoreTimeClarity.',
+                  'Fixed operator-precedence bug in scoreEvidenceStandard that caused near-universal penalty.',
+                  'scoreEdgeCaseHandling no longer penalises markets simply for containing deadline language.',
+                ],
+              },
+              {
+                version: 'v1.1',
+                date: 'May 2025',
+                changes: [
+                  'Added dimensionDetails field: per-dimension explanation strings exposed in UI and API.',
+                  'MAX_EVENTS increased from 200 to 500 for broader market coverage.',
+                  'Resolved markets separated into dedicated /markets/resolved endpoint.',
+                ],
+              },
+              {
+                version: 'v1.0',
+                date: 'Apr 2025',
+                changes: [
+                  'Initial public release of the Verdict scoring model.',
+                  'Six-dimension heuristic framework: timeClarity, resolutionSource, outcomeDefinition, evidenceStandard, edgeCaseHandling, postHocRisk.',
+                  'Risk thresholds: Low (75+), Medium (55–74), High (38–54), Critical (<38).',
+                ],
+              },
+            ].map((entry, i, arr) => (
+              <div key={entry.version} className={`grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 sm:gap-8 py-6 ${i < arr.length - 1 ? 'border-b border-border' : ''}`}>
+                <div className="shrink-0">
+                  <p className="font-heading text-xl font-light text-foreground">{entry.version}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{entry.date}</p>
+                </div>
+                <ul className="flex flex-col gap-2">
+                  {entry.changes.map((change, j) => (
+                    <li key={j} className="text-sm text-muted-foreground leading-relaxed flex gap-3">
+                      <span className="text-border mt-1.5 shrink-0" aria-hidden="true">—</span>
+                      {change}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* ── Limitations ───────────────────────────────── */}
         <section>
           <h2 className="font-heading text-3xl font-light text-foreground mb-6">Limitations</h2>
