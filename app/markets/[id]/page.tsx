@@ -3,6 +3,7 @@ import { Nav, PageFooter } from '@/components/nav'
 import { RiskBadge } from '@/components/risk-badge'
 import { ScoreBreakdown } from '@/components/markets/score-breakdown'
 import { ShareButton } from '@/components/markets/share-button'
+import { StarButton } from '@/components/markets/star-button'
 import { ExternalLink, Calendar, DollarSign, Droplets, FileText, ArrowLeft, ArrowRight } from 'lucide-react'
 import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'
 import { formatVolume } from '@/lib/utils'
@@ -124,7 +125,10 @@ export default async function MarketDetailPage({
             {market.eventTitle && (
               <p className="text-sm text-muted-foreground">Event: {market.eventTitle}</p>
             )}
-            <ShareButton question={market.question} />
+            <div className="flex items-center gap-3">
+              <StarButton marketId={market.marketId} />
+              <ShareButton question={market.question} />
+            </div>
           </div>
         </div>
 

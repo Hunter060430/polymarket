@@ -14,6 +14,7 @@ const NAV_LINKS = [
   { href: '/methodology',    label: 'Methodology'    },
   { href: '/api-docs',       label: 'API'            },
   { href: '/about',          label: 'About'          },
+  { href: '/disputes',       label: 'Disputes'       },
   { href: '/submit-dispute', label: 'Submit Dispute' },
 ]
 
@@ -180,6 +181,7 @@ export function PageFooter() {
               <Link href="/markets"            className="text-xs text-muted-foreground hover:text-foreground transition-colors">Markets</Link>
               <Link href="/markets/resolved"   className="text-xs text-muted-foreground hover:text-foreground transition-colors">Resolved</Link>
               <Link href="/markets?sort=score-asc&risk=Critical" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Critical Risk</Link>
+              <Link href="/disputes"           className="text-xs text-muted-foreground hover:text-foreground transition-colors">Dispute Registry</Link>
               <Link href="/submit-dispute"     className="text-xs text-muted-foreground hover:text-foreground transition-colors">Submit Dispute</Link>
             </nav>
           </div>

@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   description: 'Live Verdict scores for all active Polymarket markets, sorted by lowest clarity score.',
 }
 import { StatsCards } from '@/components/dashboard/stats-cards'
+import { ScoreHistogram } from '@/components/dashboard/score-histogram'
 import { MarketsTable } from '@/components/dashboard/markets-table'
 import { AlertCircle } from 'lucide-react'
 import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'
@@ -62,6 +63,7 @@ async function DashboardContent() {
   return (
     <div className="flex flex-col gap-10">
       <StatsCards markets={data.markets} eventCount={data.eventCount} />
+      <ScoreHistogram markets={data.markets} />
       <div>
         <div className="flex items-baseline justify-between gap-4 pb-4 border-b border-border mb-0">
           <h2 className="font-heading text-2xl font-light text-foreground">Active Markets</h2>

@@ -1,14 +1,17 @@
 'use client'
 
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useState, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RiskBadge } from '@/components/risk-badge'
-import { Search, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
+import { StarButton } from '@/components/markets/star-button'
+import { Search, ArrowRight, ChevronLeft, ChevronRight, Keyboard } from 'lucide-react'
 import { formatVolume, formatDate, cn } from '@/lib/utils'
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
+import { useWatchlist } from '@/hooks/use-watchlist'
 import type { NormalizedMarket, RiskLevel } from '@/lib/types'
 
 const PAGE_SIZE = 25
@@ -21,6 +24,9 @@ interface MarketsListClientProps {
 export function MarketsListClient({ markets }: MarketsListClientProps) {
   const router       = useRouter()
   const searchParams = useSearchParams()
+  const searchRef    = useRef<HTMLInputElement>(null)
+  const [focusedIndex, setFocusedIndex] = useState(-1)
+  const { watchlist } = useWatchlist()
 
   // Read state from URL; fall back to defaults
   const query      = searchParams.get('q')         ?? ''
@@ -47,6 +53,11 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
     router.replace(`?${params.toString()}`, { scroll: false })
   }, [router, searchParams])
 
+  const clearFilters = useCallback(() => {
+    router.replace('?', { scroll: false })
+    setFocusedIndex(-1)
+  }, [router])
+
   const filtered = useMemo(() => {
     const result = markets.filter((m) => {
       if (query) {
@@ -54,7 +65,8 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
         if (!m.question.toLowerCase().includes(q) && !m.eventTitle.toLowerCase().includes(q) && !m.eventCategory.toLowerCase().includes(q))
           return false
       }
-      if (riskFilter !== 'all' && m.score.riskLevel !== riskFilter) return false
+      if (riskFilter === 'Starred') { if (!watchlist.has(m.marketId)) return false }
+      else if (riskFilter !== 'all' && m.score.riskLevel !== riskFilter) return false
       if (m.volume < (parseFloat(minVolume) || 0)) return false
       return true
     })
@@ -79,6 +91,15 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage   = Math.min(page, totalPages)
   const pageItems  = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+  const pageItemIds = useMemo(() => pageItems.map((m) => m.marketId), [pageItems])
+
+  useKeyboardShortcuts({
+    marketIds: pageItemIds,
+    activeIndex: focusedIndex,
+    onChangeIndex: setFocusedIndex,
+    searchInputRef: searchRef,
+    onClearFilters: clearFilters,
+  })
 
   return (
     <div className="flex flex-col gap-0">
@@ -89,7 +110,8 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
         <div className="relative w-full sm:flex-1 sm:min-w-[180px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" aria-hidden="true" />
           <Input
-            placeholder="Search markets..."
+            ref={searchRef}
+            placeholder="Search markets... (press / to focus)"
             className="pl-9 text-xs h-8 bg-background border-border w-full"
             value={query}
             onChange={(e) => setParam('q', e.target.value)}
@@ -105,6 +127,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All levels</SelectItem>
+              <SelectItem value="Starred">Starred</SelectItem>
               <SelectItem value="Critical">Critical</SelectItem>
               <SelectItem value="High">High</SelectItem>
               <SelectItem value="Medium">Medium</SelectItem>
@@ -149,9 +172,22 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
             ? 'No markets match.'
             : `${(safePage - 1) * PAGE_SIZE + 1}–${Math.min(safePage * PAGE_SIZE, filtered.length)} of ${filtered.length} markets`}
         </p>
-        {totalPages > 1 && (
-          <p className="text-xs text-muted-foreground">Page {safePage} / {totalPages}</p>
-        )}
+        <div className="flex items-center gap-3">
+          {totalPages > 1 && (
+            <p className="text-xs text-muted-foreground">Page {safePage} / {totalPages}</p>
+          )}
+          <div className="hidden sm:flex items-center gap-1.5 text-[10px] text-muted-foreground/60 select-none" aria-hidden="true">
+            <Keyboard className="size-3" />
+            <kbd className="border border-border px-1">J/K</kbd>
+            <span>navigate</span>
+            <kbd className="border border-border px-1">↵</kbd>
+            <span>open</span>
+            <kbd className="border border-border px-1">/</kbd>
+            <span>search</span>
+            <kbd className="border border-border px-1">Esc</kbd>
+            <span>clear</span>
+          </div>
+        </div>
       </div>
 
       {/* ── Market rows ────────────────────────────────────── */}
@@ -161,16 +197,19 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
             <p className="text-sm text-muted-foreground">No markets match the current filters.</p>
           </div>
         ) : (
-          pageItems.map((market) => {
+          pageItems.map((market, rowIdx) => {
             const isCritical = market.score.riskLevel === 'Critical'
             const isHigh     = market.score.riskLevel === 'High'
+            const isFocused  = rowIdx === focusedIndex
             return (
               <div
                 key={market.marketId}
+                onClick={() => setFocusedIndex(rowIdx)}
                 className={cn(
-                  'flex items-center gap-3 sm:gap-5 px-3 sm:px-5 py-3 sm:py-4 hover:bg-secondary/25 transition-colors',
+                  'flex items-center gap-3 sm:gap-5 px-3 sm:px-5 py-3 sm:py-4 hover:bg-secondary/25 transition-colors cursor-default',
                   isCritical && '[border-left:2px_solid_var(--risk-critical)]',
-                  isHigh     && '[border-left:2px_solid_var(--risk-high)]'
+                  isHigh     && '[border-left:2px_solid_var(--risk-high)]',
+                  isFocused  && 'bg-secondary/40 outline outline-1 outline-primary/40'
                 )}
               >
                 {/* Score number */}
@@ -213,11 +252,34 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
                   </div>
                 </div>
 
+                {/* Outcome price — YES probability */}
+                {market.outcomePrices.length > 0 && (
+                  <div className="shrink-0 hidden sm:flex flex-col items-end gap-0.5">
+                    <span
+                      className="font-heading text-base font-light tabular-nums leading-none"
+                      style={{
+                        color:
+                          market.outcomePrices[0] >= 0.7 ? 'var(--risk-low)' :
+                          market.outcomePrices[0] >= 0.4 ? 'var(--risk-medium)' :
+                          'var(--risk-high)',
+                      }}
+                    >
+                      {(market.outcomePrices[0] * 100).toFixed(0)}%
+                    </span>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                      {market.outcomes[0] ?? 'YES'}
+                    </span>
+                  </div>
+                )}
+
                 {/* Meta — hidden on xs, visible sm+ */}
-                <div className="shrink-0 hidden sm:flex flex-col items-end gap-1 text-xs text-muted-foreground">
+                <div className="shrink-0 hidden md:flex flex-col items-end gap-1 text-xs text-muted-foreground">
                   <span className="tabular-nums font-medium">{formatVolume(market.volume)}</span>
                   {market.endDate && <span>{formatDate(market.endDate)}</span>}
                 </div>
+
+                {/* Star */}
+                <StarButton marketId={market.marketId} />
 
                 {/* Arrow */}
                 <Link
