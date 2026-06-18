@@ -168,6 +168,56 @@ export const fetchAllActivePolymarketMarkets = unstable_cache(
 )
 
 // ---------------------------------------------------------------------------
+// Single market fetch — used by the detail page so it does NOT need to pull
+// the full 500-market list just to render one market. Cached independently
+// for 5 min so repeat visits are instant.
+// ---------------------------------------------------------------------------
+
+async function _fetchMarketById(id: string): Promise<NormalizedMarket | null> {
+  const controller = new AbortController()
+  const timeoutId  = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+
+  try {
+    const res = await fetch(`${GAMMA_API_BASE}/markets/${encodeURIComponent(id)}`, {
+      signal:  controller.signal,
+      headers: { Accept: 'application/json' },
+      next:    { revalidate: 300 },
+    })
+    clearTimeout(timeoutId)
+
+    if (!res.ok) return null
+
+    const market = await res.json()
+    if (!market || !market.id) return null
+
+    // Wrap in a synthetic event so normalizePolymarketMarkets can process it.
+    const syntheticEvent: PolymarketEvent = {
+      id:       market.eventId   ?? market.id,
+      title:    market.eventTitle ?? '',
+      slug:     market.eventSlug  ?? '',
+      category: market.category   ?? '',
+      markets:  [market],
+    }
+
+    const normalised = normalizePolymarketMarkets([syntheticEvent])
+    return normalised[0] ?? null
+  } catch {
+    clearTimeout(timeoutId)
+    return null
+  }
+}
+
+// unstable_cache with a static key is not per-argument; we wrap it so each
+// unique ID gets its own cache slot.
+export function fetchMarketById(id: string): Promise<NormalizedMarket | null> {
+  return unstable_cache(
+    () => _fetchMarketById(id),
+    [`polymarket-market-${id}-v1`],
+    { revalidate: 300, tags: ['polymarket-markets'] }
+  )()
+}
+
+// ---------------------------------------------------------------------------
 // Resolved (closed) markets — separate fetch so active and resolved are cached
 // independently. We cap at 100 to keep response size manageable.
 // ---------------------------------------------------------------------------

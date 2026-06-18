@@ -5,30 +5,46 @@ import { ScoreBreakdown } from '@/components/markets/score-breakdown'
 import { ShareButton } from '@/components/markets/share-button'
 import { StarButton } from '@/components/markets/star-button'
 import { ExternalLink, Calendar, DollarSign, Droplets, FileText, ArrowLeft, ArrowRight } from 'lucide-react'
-import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'
+import { fetchAllActivePolymarketMarkets, fetchMarketById } from '@/lib/polymarket'
 import { formatVolume } from '@/lib/utils'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import type { NormalizedMarket } from '@/lib/types'
 
-// Single fetch — reuse the same cached promise for both market + related.
-// Calling fetchAllActivePolymarketMarkets() multiple times in the same render
-// is safe (unstable_cache dedupes), but returning the full list once and
-// deriving everything from it avoids any risk of duplicate in-flight requests.
+// Detail page data strategy:
+//   1. fetchMarketById(id) — hits Gamma /markets/:id directly, O(1) latency,
+//      independently cached for 5 min. Does NOT require pulling 500 markets.
+//   2. If that returns null (market not in active list, or bad ID), fall back
+//      to the full cached list and match by marketId OR conditionId so markets
+//      that happen to be identified differently in URLs still resolve.
+//   3. Related markets come from the full list cache (already warm from the
+//      markets listing page), filtered client-side in memory.
 async function getMarketAndRelated(id: string): Promise<{
   market: NormalizedMarket | null
   related: NormalizedMarket[]
 }> {
-  const markets = await fetchAllActivePolymarketMarkets()
-  const market = markets.find((m) => m.marketId === id) ?? null
+  // Primary: fast single-market fetch
+  let market = await fetchMarketById(id)
+
+  // Fallback: scan full list in case the ID is a conditionId or the single
+  // API returned null (e.g. market moved to resolved state)
+  if (!market) {
+    const allMarkets = await fetchAllActivePolymarketMarkets()
+    market = allMarkets.find(
+      (m) => m.marketId === id || m.conditionId === id || m.marketSlug === id
+    ) ?? null
+  }
+
   if (!market) return { market: null, related: [] }
 
-  const related = markets
+  // Related: derive from full list (cheap — already cached)
+  const allMarkets = await fetchAllActivePolymarketMarkets()
+  const related = allMarkets
     .filter(
       (m) =>
-        m.marketId !== market.marketId &&
-        (m.eventCategory === market.eventCategory ||
-          m.score.riskLevel === market.score.riskLevel)
+        m.marketId !== market!.marketId &&
+        (m.eventCategory === market!.eventCategory ||
+          m.score.riskLevel === market!.score.riskLevel)
     )
     .sort((a, b) => a.score.totalScore - b.score.totalScore)
     .slice(0, 4)
