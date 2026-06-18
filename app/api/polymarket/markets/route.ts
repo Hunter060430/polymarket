@@ -2,8 +2,11 @@ import { NextResponse } from 'next/server'
 import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'
 import type { MarketsApiResponse } from '@/lib/types'
 
-// Cache the route response for 5 minutes at the HTTP layer too.
-export const revalidate = 300
+// Force dynamic execution — the JSON payload (~24 MB) exceeds Vercel's ISR
+// pre-render limit of 19 MB, so we cannot use revalidate here. Caching is
+// handled upstream by fetchAllActivePolymarketMarkets (5-min in-memory cache)
+// and by the Cache-Control header below.
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
@@ -17,7 +20,9 @@ export async function GET() {
       markets,
     }
 
-    return NextResponse.json(response)
+    return NextResponse.json(response, {
+      headers: { 'Cache-Control': 's-maxage=300, stale-while-revalidate=600' },
+    })
   } catch (error) {
     console.error('[api/polymarket/markets] Fetch failed:', error)
     return NextResponse.json(
