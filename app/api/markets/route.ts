@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
+  const queryParam    = searchParams.get('q')
   const riskParam     = searchParams.get('risk')
   const minScoreParam = searchParams.get('minScore')
   const limitParam    = searchParams.get('limit')
@@ -24,6 +25,17 @@ export async function GET(req: NextRequest) {
     const allMarkets = await fetchAllActivePolymarketMarkets()
 
     let markets = allMarkets
+
+    // Full-text search across the ENTIRE dataset (not just the first page),
+    // so the command palette can find any market by question or category.
+    if (queryParam && queryParam.trim().length > 0) {
+      const q = queryParam.trim().toLowerCase()
+      markets = markets.filter(
+        (m) =>
+          m.question.toLowerCase().includes(q) ||
+          (m.eventCategory ?? '').toLowerCase().includes(q)
+      )
+    }
 
     if (riskParam && ['Critical', 'High', 'Medium', 'Low'].includes(riskParam)) {
       markets = markets.filter((m) => m.score.riskLevel === riskParam)

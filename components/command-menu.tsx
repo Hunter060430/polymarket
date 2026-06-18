@@ -41,7 +41,7 @@ export function CommandMenu() {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [markets, setMarkets] = useState<MarketHit[]>([])
-  const [loaded, setLoaded] = useState(false)
+  const [searching, setSearching] = useState(false)
 
   // ⌘K / Ctrl+K to toggle
   useEffect(() => {
@@ -55,14 +55,21 @@ export function CommandMenu() {
     return () => document.removeEventListener('keydown', down)
   }, [])
 
-  // Lazy-load market list the first time the palette opens
+  // Server-side search across the FULL market dataset, debounced. This finds
+  // any market (not just the first page) and keeps payloads tiny.
   useEffect(() => {
-    if (!open || loaded) return
+    const q = query.trim()
+    if (q.length < 2) {
+      setMarkets([])
+      setSearching(false)
+      return
+    }
+    setSearching(true)
     let cancelled = false
-    ;(async () => {
+    const timer = setTimeout(async () => {
       try {
-        const res = await fetch('/api/markets?limit=500')
-        if (!res.ok) return
+        const res = await fetch(`/api/markets?q=${encodeURIComponent(q)}&limit=8`)
+        if (!res.ok) { if (!cancelled) setSearching(false); return }
         const data = await res.json()
         if (cancelled) return
         const hits: MarketHit[] = (data.markets ?? []).map((m: Record<string, unknown>) => ({
@@ -72,13 +79,19 @@ export function CommandMenu() {
           riskLevel: (m.score as { riskLevel: string })?.riskLevel ?? '',
         }))
         setMarkets(hits)
-        setLoaded(true)
       } catch {
         /* ignore */
+      } finally {
+        if (!cancelled) setSearching(false)
       }
-    })()
-    return () => { cancelled = true }
-  }, [open, loaded])
+    }, 250)
+    return () => { cancelled = true; clearTimeout(timer) }
+  }, [query])
+
+  // Reset state when the palette closes
+  useEffect(() => {
+    if (!open) { setQuery(''); setMarkets([]); setSearching(false) }
+  }, [open])
 
   const go = useCallback((href: string) => {
     setOpen(false)
@@ -86,13 +99,7 @@ export function CommandMenu() {
   }, [router])
 
   const isDark = resolvedTheme === 'dark'
-
-  // Only filter markets when there's a query (avoid rendering 500 items)
-  const marketResults = query.trim().length >= 2
-    ? markets
-        .filter((m) => m.question.toLowerCase().includes(query.toLowerCase()))
-        .slice(0, 8)
-    : []
+  const marketResults = markets
 
   return (
     <>
