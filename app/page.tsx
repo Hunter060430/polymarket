@@ -4,7 +4,8 @@ import { ArrowRight, Shield, Clock, BookOpen, BarChart2, AlertTriangle, FileChec
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Verdict — Prediction Market Clarity Index',
+  // Use layout.tsx default title — avoids "Verdict — Verdict" from the template
+  title: null,
   description:
     'Independent scoring of Polymarket prediction markets. Know the resolution quality before you trade.',
 }

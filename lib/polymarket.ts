@@ -3,9 +3,9 @@ import type { PolymarketEvent, NormalizedMarket } from './types'
 import { calculateRuleClarityScore } from './rule-clarity-score'
 
 const GAMMA_API_BASE = 'https://gamma-api.polymarket.com'
-// Fetch at most this many events. 200 is enough for meaningful analysis and
-// keeps parallel fetch latency under ~4 seconds.
-const MAX_EVENTS = 200
+// Fetch at most this many events. 500 gives broad market coverage while
+// keeping parallel fetch latency manageable (~5 concurrent pages).
+const MAX_EVENTS = 500
 const PAGE_LIMIT = 100
 const REQUEST_TIMEOUT_MS = 12000
 

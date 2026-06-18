@@ -4,7 +4,6 @@ import { notFound } from 'next/navigation'
 import { Nav, PageFooter } from '@/components/nav'
 import { RiskBadge } from '@/components/risk-badge'
 import { ScoreBreakdown } from '@/components/markets/score-breakdown'
-import { RawJsonPanel } from '@/components/markets/raw-json-panel'
 import { ExternalLink, Calendar, DollarSign, Droplets, FileText, ArrowLeft } from 'lucide-react'
 import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'
 import { formatVolume } from '@/lib/utils'
@@ -134,7 +133,7 @@ export default async function MarketDetailPage({
         <section className="border-b border-border pb-10 mb-10">
           <h2 className="font-heading text-2xl font-light text-foreground mb-1">Score Breakdown</h2>
           <p className="text-xs tracking-wide text-muted-foreground mb-6 uppercase">Six weighted criteria</p>
-              <ScoreBreakdown score={score} />
+              <ScoreBreakdown breakdown={score.breakdown} dimensionDetails={score.dimensionDetails} />
         </section>
 
         {/* ── Market Details ─────────────────────────────── */}
@@ -228,8 +227,6 @@ export default async function MarketDetailPage({
           </div>
         )}
 
-        {/* ── Raw JSON ──────────────────────────────────── */}
-        <RawJsonPanel market={market} />
 
       </main>
       <PageFooter />

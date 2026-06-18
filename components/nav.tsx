@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
@@ -19,6 +19,27 @@ const NAV_LINKS = [
 export function Nav() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const hamburgerRef = useRef<HTMLButtonElement>(null)
+
+  // Close on Escape; lock body scroll when open
+  useEffect(() => {
+    if (!open) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false)
+        hamburgerRef.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', handleKey)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', handleKey)
+      document.body.style.overflow = ''
+    }
+  }, [open])
+
+  // Close drawer when route changes
+  useEffect(() => { setOpen(false) }, [pathname])
 
   return (
     <header className="border-b border-border bg-background sticky top-0 z-50">
@@ -71,11 +92,13 @@ export function Nav() {
 
         {/* Mobile hamburger */}
         <button
+          ref={hamburgerRef}
           className="md:hidden inline-flex items-center justify-center size-9 text-foreground hover:text-primary transition-colors"
           onClick={() => setOpen((o) => !o)}
           aria-label={open ? 'Close menu' : 'Open menu'}
           aria-expanded={open}
           aria-controls="mobile-menu"
+          aria-haspopup="true"
         >
           {open ? <X className="size-5" /> : <Menu className="size-5" />}
         </button>
@@ -87,6 +110,8 @@ export function Nav() {
           id="mobile-menu"
           className="md:hidden border-t border-border bg-background"
           aria-label="Mobile navigation"
+          aria-modal="true"
+          role="dialog"
         >
           {NAV_LINKS.map(({ href, label }) => {
             const active = href === '/dashboard'

@@ -2,7 +2,8 @@ import { DIMENSION_LABELS } from '@/lib/rule-clarity-score'
 import type { RuleClarityBreakdown, RuleClarityScore } from '@/lib/types'
 
 interface ScoreBreakdownProps {
-  score: RuleClarityScore
+  breakdown: RuleClarityScore['breakdown']
+  dimensionDetails?: RuleClarityScore['dimensionDetails']
 }
 
 function barColor(score: number, max: number): string {
@@ -13,8 +14,7 @@ function barColor(score: number, max: number): string {
   return 'var(--risk-critical)'
 }
 
-export function ScoreBreakdown({ score }: ScoreBreakdownProps) {
-  const { breakdown, dimensionDetails } = score
+export function ScoreBreakdown({ breakdown, dimensionDetails }: ScoreBreakdownProps) {
   const keys = Object.keys(DIMENSION_LABELS) as (keyof RuleClarityBreakdown)[]
 
   return (

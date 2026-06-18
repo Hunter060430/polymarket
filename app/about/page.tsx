@@ -55,7 +55,7 @@ const FAQS = [
   },
   {
     q: 'What markets does Verdict cover?',
-    a: 'Currently, Verdict covers active, non-closed markets on Polymarket with non-zero trading volume. Markets are fetched sorted by volume and limited to 200 for performance.',
+    a: 'Currently, Verdict covers active, non-closed markets on Polymarket with non-zero trading volume. Markets are fetched sorted by volume, up to 500 at a time, and refreshed every 5 minutes.',
   },
 ]
 

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useMemo, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -18,15 +19,33 @@ interface MarketsListClientProps {
 }
 
 export function MarketsListClient({ markets }: MarketsListClientProps) {
-  const [query, setQuery]           = useState('')
-  const [riskFilter, setRiskFilter] = useState<string>('all')
-  const [minVolume, setMinVolume]   = useState<string>('0')
-  const [sortBy, setSortBy]         = useState<string>('score-asc')
-  const [page, setPage]             = useState(1)
+  const router       = useRouter()
+  const searchParams = useSearchParams()
 
-  function resetPage<T>(setter: (v: T) => void) {
-    return (v: T) => { setter(v); setPage(1) }
-  }
+  // Read state from URL; fall back to defaults
+  const query      = searchParams.get('q')         ?? ''
+  const riskFilter = searchParams.get('risk')      ?? 'all'
+  const minVolume  = searchParams.get('minvol')    ?? '0'
+  const sortBy     = searchParams.get('sort')      ?? 'score-asc'
+  const page       = Number(searchParams.get('page') ?? '1')
+
+  // Push updated params to URL
+  const setParam = useCallback((key: string, value: string, resetPage = true) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (value === '' || value === 'all' || value === '0') {
+      params.delete(key)
+    } else {
+      params.set(key, value)
+    }
+    if (resetPage) params.delete('page')
+    router.replace(`?${params.toString()}`, { scroll: false })
+  }, [router, searchParams])
+
+  const setPage = useCallback((p: number) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (p <= 1) { params.delete('page') } else { params.set('page', String(p)) }
+    router.replace(`?${params.toString()}`, { scroll: false })
+  }, [router, searchParams])
 
   const filtered = useMemo(() => {
     const result = markets.filter((m) => {
@@ -73,14 +92,14 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
             placeholder="Search markets..."
             className="pl-9 text-xs h-8 bg-background border-border w-full"
             value={query}
-            onChange={(e) => { setQuery(e.target.value); setPage(1) }}
+            onChange={(e) => setParam('q', e.target.value)}
             aria-label="Search markets"
           />
         </div>
 
         {/* Selects — row of 3 on mobile */}
         <div className="flex gap-2 flex-wrap">
-          <Select value={riskFilter} onValueChange={(v) => v && resetPage(setRiskFilter)(v)}>
+          <Select value={riskFilter} onValueChange={(v) => v && setParam('risk', v)}>
             <SelectTrigger className="w-[calc(50%-4px)] sm:w-36 text-xs h-8 bg-background border-border" aria-label="Risk level filter">
               <SelectValue placeholder="Risk level" />
             </SelectTrigger>
@@ -93,7 +112,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
             </SelectContent>
           </Select>
 
-          <Select value={minVolume} onValueChange={(v) => v && resetPage(setMinVolume)(v)}>
+          <Select value={minVolume} onValueChange={(v) => v && setParam('minvol', v)}>
             <SelectTrigger className="w-[calc(50%-4px)] sm:w-32 text-xs h-8 bg-background border-border" aria-label="Minimum volume">
               <SelectValue placeholder="Min volume" />
             </SelectTrigger>
@@ -107,7 +126,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
             </SelectContent>
           </Select>
 
-          <Select value={sortBy} onValueChange={(v) => v && resetPage(setSortBy)(v)}>
+          <Select value={sortBy} onValueChange={(v) => v && setParam('sort', v)}>
             <SelectTrigger className="w-full sm:w-44 text-xs h-8 bg-background border-border" aria-label="Sort by">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
@@ -217,7 +236,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
       {/* ── Pagination ─────────────────────────────────────── */}
       {totalPages > 1 && (
         <div className="border border-border border-t-0 px-4 py-3 flex items-center justify-center gap-1" role="navigation" aria-label="Pagination">
-          <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage <= 1} aria-label="Previous page" className="text-xs h-8 px-3">
+          <Button variant="ghost" size="sm" onClick={() => setPage(Math.max(1, safePage - 1))} disabled={safePage <= 1} aria-label="Previous page" className="text-xs h-8 px-3">
             <ChevronLeft className="size-3.5 mr-1" aria-hidden="true" />Prev
           </Button>
 
@@ -232,7 +251,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
               item === '…' ? (
                 <span key={`e-${idx}`} className="px-1 text-xs text-muted-foreground">…</span>
               ) : (
-                <Button
+                  <Button
                   key={item}
                   variant={item === safePage ? 'default' : 'ghost'}
                   size="sm"
@@ -246,7 +265,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
               )
             )}
 
-          <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} aria-label="Next page" className="text-xs h-8 px-3">
+          <Button variant="ghost" size="sm" onClick={() => setPage(Math.min(totalPages, safePage + 1))} disabled={safePage >= totalPages} aria-label="Next page" className="text-xs h-8 px-3">
             Next<ChevronRight className="size-3.5 ml-1" aria-hidden="true" />
           </Button>
         </div>

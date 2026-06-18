@@ -73,8 +73,23 @@ export function DisputeForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setState('submitting')
-    await new Promise((r) => setTimeout(r, 1200))
-    setState('success')
+    try {
+      const res = await fetch('/api/disputes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        console.error('[verdict] dispute submit failed:', res.status, data)
+        setState('error')
+        return
+      }
+      setState('success')
+    } catch (err) {
+      console.error('[verdict] dispute submit error:', err)
+      setState('error')
+    }
   }
 
   if (state === 'success') {
