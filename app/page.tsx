@@ -10,8 +10,8 @@ export const metadata: Metadata = {
 }
 
 const STATS = [
-  { value: '200+', label: 'Markets scanned' },
-  { value: '6',    label: 'Scored dimensions' },
+  { value: '500+',  label: 'Markets scanned' },
+  { value: '6',     label: 'Scored dimensions' },
   { value: '0–100', label: 'Clarity score' },
   { value: '5 min', label: 'Cache refresh' },
 ]
@@ -76,27 +76,27 @@ export default function LandingPage() {
                     Independent Watchdog
                   </p>
                 </div>
-                <h1 className="font-heading text-[clamp(3.5rem,8vw,6.5rem)] font-light leading-[0.93] tracking-tight text-foreground text-balance mb-10">
+                <h1 className="font-heading text-[clamp(2.6rem,7vw,6.5rem)] font-light leading-[0.95] tracking-tight text-foreground text-balance mb-8">
                   Does this market<br />
                   have{' '}
                   <em className="not-italic text-primary">clear rules?</em>
                 </h1>
-                <p className="text-base text-muted-foreground leading-relaxed max-w-lg mb-10">
+                <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-lg mb-8">
                   Verdict scores every active Polymarket market across six dimensions of resolution
                   quality — in real time, before you trade. No black boxes. No discretion.
                   Deterministic, documented, and free.
                 </p>
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3">
                   <Link
                     href="/dashboard"
-                    className="inline-flex items-center gap-2.5 bg-foreground text-background px-7 py-3.5 text-xs tracking-[0.12em] uppercase font-medium hover:bg-primary transition-colors"
+                    className="inline-flex items-center justify-center gap-2.5 bg-foreground text-background px-7 py-3.5 text-xs tracking-[0.12em] uppercase font-medium hover:bg-primary transition-colors"
                   >
                     Open Dashboard
                     <ArrowRight className="size-3.5" aria-hidden="true" />
                   </Link>
                   <Link
                     href="/markets?sort=score-asc&risk=Critical"
-                    className="inline-flex items-center gap-2.5 border border-border text-foreground px-7 py-3.5 text-xs tracking-[0.12em] uppercase font-medium hover:bg-secondary transition-colors"
+                    className="inline-flex items-center justify-center gap-2.5 border border-border text-foreground px-7 py-3.5 text-xs tracking-[0.12em] uppercase font-medium hover:bg-secondary transition-colors"
                   >
                     Critical Risk Markets
                   </Link>
@@ -122,11 +122,12 @@ export default function LandingPage() {
 
         {/* ── STATS MOBILE ─────────────────────────────────────── */}
         <section className="border-b border-border lg:hidden" aria-label="Key statistics">
-          <div className="mx-auto max-w-6xl px-6 py-10">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
+            <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground mb-5">Live Index</p>
             <div className="grid grid-cols-2 divide-x divide-y divide-border border border-border">
               {STATS.map((s) => (
-                <div key={s.label} className="px-6 py-6">
-                  <p className="font-heading text-4xl font-light text-foreground tabular-nums leading-none">{s.value}</p>
+                <div key={s.label} className="px-4 py-5">
+                  <p className="font-heading text-3xl sm:text-4xl font-light text-foreground tabular-nums leading-none">{s.value}</p>
                   <p className="text-xs text-muted-foreground mt-2">{s.label}</p>
                 </div>
               ))}
@@ -136,11 +137,11 @@ export default function LandingPage() {
 
         {/* ── PROBLEM STATEMENT ────────────────────────────────── */}
         <section className="border-b border-border">
-          <div className="mx-auto max-w-6xl px-6 py-20">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-20">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-20">
               <div>
                 <p className="text-xs tracking-[0.18em] uppercase text-muted-foreground mb-5">The Problem</p>
-                <h2 className="font-heading text-4xl lg:text-5xl font-light text-foreground leading-tight">
+                <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-light text-foreground leading-tight">
                   Ambiguous rules are the source of every dispute.
                 </h2>
               </div>
@@ -168,11 +169,11 @@ export default function LandingPage() {
 
         {/* ── SIX DIMENSIONS ───────────────────────────────────── */}
         <section className="border-b border-border">
-          <div className="mx-auto max-w-6xl px-6 py-20">
-            <div className="flex items-baseline justify-between gap-8 mb-12">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-20">
+            <div className="flex items-baseline justify-between gap-8 mb-8 sm:mb-12">
               <div>
                 <p className="text-xs tracking-[0.18em] uppercase text-muted-foreground mb-4">Framework</p>
-                <h2 className="font-heading text-4xl font-light text-foreground">Six dimensions. One score.</h2>
+                <h2 className="font-heading text-3xl sm:text-4xl font-light text-foreground">Six dimensions. One score.</h2>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 divide-x divide-y divide-border border-t border-l border-border">
@@ -189,7 +190,7 @@ export default function LandingPage() {
 
         {/* ── RISK SCALE ───────────────────────────────────────── */}
         <section className="border-b border-border">
-          <div className="mx-auto max-w-6xl px-6 py-20">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-20">
             <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-12 lg:gap-0">
               <div className="lg:pr-16 lg:border-r border-border">
                 <p className="text-xs tracking-[0.18em] uppercase text-muted-foreground mb-5">Risk Scale</p>
@@ -220,10 +221,10 @@ export default function LandingPage() {
 
         {/* ── CTA ──────────────────────────────────────────────── */}
         <section>
-          <div className="mx-auto max-w-6xl px-6 py-24">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-end">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 py-14 sm:py-24">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-20 items-end">
               <div>
-                <h2 className="font-heading text-5xl lg:text-6xl font-light text-foreground leading-tight text-balance">
+                <h2 className="font-heading text-4xl sm:text-5xl lg:text-6xl font-light text-foreground leading-tight text-balance">
                   Start with the markets that matter most.
                 </h2>
               </div>
@@ -234,14 +235,14 @@ export default function LandingPage() {
                 <div className="flex flex-col gap-3 mt-2">
                   <Link
                     href="/markets?sort=score-asc&risk=Critical"
-                    className="inline-flex items-center gap-2.5 bg-foreground text-background px-7 py-3.5 text-xs tracking-[0.12em] uppercase font-medium hover:bg-primary transition-colors"
+                    className="inline-flex items-center justify-center gap-2.5 bg-foreground text-background px-7 py-3.5 text-xs tracking-[0.12em] uppercase font-medium hover:bg-primary transition-colors"
                   >
                     View Critical-Risk Markets
                     <ArrowRight className="size-3.5" aria-hidden="true" />
                   </Link>
                   <Link
                     href="/submit-dispute"
-                    className="inline-flex items-center gap-2.5 border border-border text-foreground px-7 py-3.5 text-xs tracking-[0.12em] uppercase font-medium hover:bg-secondary transition-colors"
+                    className="inline-flex items-center justify-center gap-2.5 border border-border text-foreground px-7 py-3.5 text-xs tracking-[0.12em] uppercase font-medium hover:bg-secondary transition-colors"
                   >
                     Report a Disputed Resolution
                   </Link>

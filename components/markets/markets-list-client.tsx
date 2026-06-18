@@ -65,58 +65,62 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
     <div className="flex flex-col gap-0">
 
       {/* ── Filter bar ─────────────────────────────────────── */}
-      <div className="border border-border border-b-0 bg-secondary/20 px-4 py-3 flex flex-wrap gap-3 items-center">
-        <div className="relative flex-1 min-w-[200px]">
+      <div className="border border-border border-b-0 bg-secondary/20 px-3 sm:px-4 py-3 flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 items-stretch sm:items-center">
+        {/* Search — full width on mobile */}
+        <div className="relative w-full sm:flex-1 sm:min-w-[180px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" aria-hidden="true" />
           <Input
             placeholder="Search markets..."
-            className="pl-9 text-xs h-8 bg-background border-border"
+            className="pl-9 text-xs h-8 bg-background border-border w-full"
             value={query}
             onChange={(e) => { setQuery(e.target.value); setPage(1) }}
             aria-label="Search markets"
           />
         </div>
 
-        <Select value={riskFilter} onValueChange={(v) => v && resetPage(setRiskFilter)(v)}>
-          <SelectTrigger className="w-36 text-xs h-8 bg-background border-border" aria-label="Risk level filter">
-            <SelectValue placeholder="Risk level" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All risk levels</SelectItem>
-            <SelectItem value="Critical">Critical</SelectItem>
-            <SelectItem value="High">High</SelectItem>
-            <SelectItem value="Medium">Medium</SelectItem>
-            <SelectItem value="Low">Low</SelectItem>
-          </SelectContent>
-        </Select>
+        {/* Selects — row of 3 on mobile */}
+        <div className="flex gap-2 flex-wrap">
+          <Select value={riskFilter} onValueChange={(v) => v && resetPage(setRiskFilter)(v)}>
+            <SelectTrigger className="w-[calc(50%-4px)] sm:w-36 text-xs h-8 bg-background border-border" aria-label="Risk level filter">
+              <SelectValue placeholder="Risk level" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All levels</SelectItem>
+              <SelectItem value="Critical">Critical</SelectItem>
+              <SelectItem value="High">High</SelectItem>
+              <SelectItem value="Medium">Medium</SelectItem>
+              <SelectItem value="Low">Low</SelectItem>
+            </SelectContent>
+          </Select>
 
-        <Select value={minVolume} onValueChange={(v) => v && resetPage(setMinVolume)(v)}>
-          <SelectTrigger className="w-32 text-xs h-8 bg-background border-border" aria-label="Minimum volume">
-            <SelectValue placeholder="Min volume" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="0">Any volume</SelectItem>
-            <SelectItem value="10000">$10K+</SelectItem>
-            <SelectItem value="50000">$50K+</SelectItem>
-            <SelectItem value="100000">$100K+</SelectItem>
-            <SelectItem value="500000">$500K+</SelectItem>
-            <SelectItem value="1000000">$1M+</SelectItem>
-          </SelectContent>
-        </Select>
+          <Select value={minVolume} onValueChange={(v) => v && resetPage(setMinVolume)(v)}>
+            <SelectTrigger className="w-[calc(50%-4px)] sm:w-32 text-xs h-8 bg-background border-border" aria-label="Minimum volume">
+              <SelectValue placeholder="Min volume" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="0">Any volume</SelectItem>
+              <SelectItem value="10000">$10K+</SelectItem>
+              <SelectItem value="50000">$50K+</SelectItem>
+              <SelectItem value="100000">$100K+</SelectItem>
+              <SelectItem value="500000">$500K+</SelectItem>
+              <SelectItem value="1000000">$1M+</SelectItem>
+            </SelectContent>
+          </Select>
 
-        <Select value={sortBy} onValueChange={(v) => v && resetPage(setSortBy)(v)}>
-          <SelectTrigger className="w-44 text-xs h-8 bg-background border-border" aria-label="Sort by">
-            <SelectValue placeholder="Sort by" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="score-asc">Score: Lowest first</SelectItem>
-            <SelectItem value="score-desc">Score: Highest first</SelectItem>
-            <SelectItem value="volume-desc">Volume: Highest first</SelectItem>
-            <SelectItem value="volume-asc">Volume: Lowest first</SelectItem>
-            <SelectItem value="enddate-asc">End date: Soonest</SelectItem>
-            <SelectItem value="risk">Risk: Critical first</SelectItem>
-          </SelectContent>
-        </Select>
+          <Select value={sortBy} onValueChange={(v) => v && resetPage(setSortBy)(v)}>
+            <SelectTrigger className="w-full sm:w-44 text-xs h-8 bg-background border-border" aria-label="Sort by">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="score-asc">Score: Lowest first</SelectItem>
+              <SelectItem value="score-desc">Score: Highest first</SelectItem>
+              <SelectItem value="volume-desc">Volume: Highest first</SelectItem>
+              <SelectItem value="volume-asc">Volume: Lowest first</SelectItem>
+              <SelectItem value="enddate-asc">End date: Soonest</SelectItem>
+              <SelectItem value="risk">Risk: Critical first</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* ── Count bar ──────────────────────────────────────── */}
@@ -145,15 +149,15 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
               <div
                 key={market.marketId}
                 className={cn(
-                  'flex items-center gap-5 px-5 py-4 hover:bg-secondary/25 transition-colors',
+                  'flex items-center gap-3 sm:gap-5 px-3 sm:px-5 py-3 sm:py-4 hover:bg-secondary/25 transition-colors',
                   isCritical && '[border-left:2px_solid_var(--risk-critical)]',
                   isHigh     && '[border-left:2px_solid_var(--risk-high)]'
                 )}
               >
                 {/* Score number */}
-                <div className="shrink-0 w-10 text-center">
+                <div className="shrink-0 w-8 sm:w-10 text-center">
                   <span
-                    className="font-heading text-3xl font-light tabular-nums leading-none"
+                    className="font-heading text-2xl sm:text-3xl font-light tabular-nums leading-none"
                     style={{
                       color:
                         market.score.riskLevel === 'Low'      ? 'var(--risk-low)' :
@@ -177,21 +181,21 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
                   >
                     {market.question}
                   </Link>
-                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                  <div className="flex flex-wrap items-center gap-2 mt-1.5">
                     <RiskBadge level={market.score.riskLevel} />
                     {market.eventCategory && (
-                      <span className="text-xs text-muted-foreground">{market.eventCategory}</span>
+                      <span className="text-xs text-muted-foreground hidden sm:inline">{market.eventCategory}</span>
                     )}
                     {market.score.flags.length > 0 && (
-                      <span className="text-xs text-muted-foreground truncate max-w-xs hidden sm:inline">
+                      <span className="text-xs text-muted-foreground truncate max-w-xs hidden md:inline">
                         &middot; {market.score.flags[0]}
                       </span>
                     )}
                   </div>
                 </div>
 
-                {/* Meta */}
-                <div className="shrink-0 flex flex-col items-end gap-1 text-xs text-muted-foreground">
+                {/* Meta — hidden on xs, visible sm+ */}
+                <div className="shrink-0 hidden sm:flex flex-col items-end gap-1 text-xs text-muted-foreground">
                   <span className="tabular-nums font-medium">{formatVolume(market.volume)}</span>
                   {market.endDate && <span>{formatDate(market.endDate)}</span>}
                 </div>

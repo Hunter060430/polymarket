@@ -50,11 +50,11 @@ export function StatsCards({ markets, eventCount }: StatsCardsProps) {
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y divide-border border border-border">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-x divide-y divide-border border border-border">
       {stats.map((stat) => (
         <div
           key={stat.label}
-          className="px-6 py-6 flex flex-col gap-4 relative"
+          className="px-4 sm:px-6 py-5 sm:py-6 flex flex-col gap-3 sm:gap-4 relative"
         >
           {/* Top accent rule */}
           <div
@@ -66,7 +66,7 @@ export function StatsCards({ markets, eventCount }: StatsCardsProps) {
             {stat.label}
           </p>
           <div>
-            <p className="font-heading text-4xl font-light tabular-nums text-foreground leading-none">
+            <p className="font-heading text-3xl sm:text-4xl font-light tabular-nums text-foreground leading-none">
               {stat.value}
               {stat.valueUnit && (
                 <span className="text-xl text-muted-foreground font-light ml-1">{stat.valueUnit}</span>

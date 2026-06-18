@@ -1,37 +1,41 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
+import { Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV_LINKS = [
-  { href: '/dashboard',      label: 'Dashboard'       },
-  { href: '/markets',        label: 'Markets'         },
-  { href: '/markets/resolved', label: 'Resolved'      },
-  { href: '/methodology',    label: 'Methodology'     },
-  { href: '/about',          label: 'About'           },
-  { href: '/submit-dispute', label: 'Submit Dispute'  },
+  { href: '/dashboard',        label: 'Dashboard'      },
+  { href: '/markets',          label: 'Markets'        },
+  { href: '/markets/resolved', label: 'Resolved'       },
+  { href: '/methodology',      label: 'Methodology'    },
+  { href: '/about',            label: 'About'          },
+  { href: '/submit-dispute',   label: 'Submit Dispute' },
 ]
 
 export function Nav() {
   const pathname = usePathname()
+  const [open, setOpen] = useState(false)
 
   return (
     <header className="border-b border-border bg-background sticky top-0 z-50">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 h-14">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 h-14">
 
         {/* Wordmark */}
         <Link
           href="/"
-          className="flex items-center gap-2 group"
+          className="flex items-center gap-2 group shrink-0"
           aria-label="Verdict — Home"
+          onClick={() => setOpen(false)}
         >
           <Image
             src="/verdict-logo.png"
             alt="Verdict logo"
-            width={32}
-            height={32}
+            width={30}
+            height={30}
             className="shrink-0 opacity-90 group-hover:opacity-100 transition-opacity"
             priority
           />
@@ -40,8 +44,8 @@ export function Nav() {
           </span>
         </Link>
 
-        {/* Nav links */}
-        <nav className="flex items-center" aria-label="Main navigation">
+        {/* Desktop nav */}
+        <nav className="hidden md:flex items-center" aria-label="Main navigation">
           {NAV_LINKS.map(({ href, label }) => {
             const active = href === '/dashboard'
               ? pathname === href
@@ -55,9 +59,8 @@ export function Nav() {
                   active
                     ? 'text-foreground after:absolute after:bottom-0 after:left-3 after:right-3 after:h-[1.5px] after:bg-foreground'
                     : 'text-muted-foreground hover:text-foreground',
-                  // Hide lower-priority links on smaller screens
-                  href === '/methodology' && 'hidden lg:inline-flex',
-                  href === '/submit-dispute' && 'hidden md:inline-flex',
+                  href === '/methodology'    && 'hidden lg:inline-flex',
+                  href === '/submit-dispute' && 'hidden lg:inline-flex',
                 )}
               >
                 {label}
@@ -65,7 +68,49 @@ export function Nav() {
             )
           })}
         </nav>
+
+        {/* Mobile hamburger */}
+        <button
+          className="md:hidden inline-flex items-center justify-center size-9 text-foreground hover:text-primary transition-colors"
+          onClick={() => setOpen((o) => !o)}
+          aria-label={open ? 'Close menu' : 'Open menu'}
+          aria-expanded={open}
+          aria-controls="mobile-menu"
+        >
+          {open ? <X className="size-5" /> : <Menu className="size-5" />}
+        </button>
       </div>
+
+      {/* Mobile drawer */}
+      {open && (
+        <nav
+          id="mobile-menu"
+          className="md:hidden border-t border-border bg-background"
+          aria-label="Mobile navigation"
+        >
+          {NAV_LINKS.map(({ href, label }) => {
+            const active = href === '/dashboard'
+              ? pathname === href
+              : pathname.startsWith(href)
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setOpen(false)}
+                className={cn(
+                  'flex items-center px-6 py-4 text-sm tracking-[0.06em] uppercase border-b border-border transition-colors',
+                  active
+                    ? 'text-foreground font-medium'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary/30',
+                )}
+              >
+                {active && <span className="w-1 h-1 rounded-full bg-primary mr-3 shrink-0" aria-hidden="true" />}
+                {label}
+              </Link>
+            )
+          })}
+        </nav>
+      )}
     </header>
   )
 }
@@ -74,10 +119,10 @@ export function PageFooter() {
   const currentYear = new Date().getFullYear()
   return (
     <footer className="border-t border-border mt-auto bg-background">
-      <div className="mx-auto max-w-6xl px-6">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
 
         {/* Main footer grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 py-12 border-b border-border">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 py-10 border-b border-border">
 
           {/* Brand column */}
           <div className="col-span-2 sm:col-span-1 flex flex-col gap-4">
@@ -85,8 +130,8 @@ export function PageFooter() {
               <Image
                 src="/verdict-logo.png"
                 alt="Verdict logo"
-                width={28}
-                height={28}
+                width={26}
+                height={26}
                 className="shrink-0 opacity-80 group-hover:opacity-100 transition-opacity"
               />
               <span className="font-heading text-sm tracking-[0.1em] uppercase text-foreground">
@@ -105,11 +150,11 @@ export function PageFooter() {
           <div className="flex flex-col gap-3">
             <p className="text-xs tracking-[0.12em] uppercase text-foreground font-medium">Product</p>
             <nav className="flex flex-col gap-2.5" aria-label="Product navigation">
-              <Link href="/dashboard"   className="text-xs text-muted-foreground hover:text-foreground transition-colors">Dashboard</Link>
-              <Link href="/markets"         className="text-xs text-muted-foreground hover:text-foreground transition-colors">Markets</Link>
-              <Link href="/markets/resolved" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Resolved Markets</Link>
+              <Link href="/dashboard"          className="text-xs text-muted-foreground hover:text-foreground transition-colors">Dashboard</Link>
+              <Link href="/markets"            className="text-xs text-muted-foreground hover:text-foreground transition-colors">Markets</Link>
+              <Link href="/markets/resolved"   className="text-xs text-muted-foreground hover:text-foreground transition-colors">Resolved</Link>
               <Link href="/markets?sort=score-asc&risk=Critical" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Critical Risk</Link>
-              <Link href="/submit-dispute" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Submit Dispute</Link>
+              <Link href="/submit-dispute"     className="text-xs text-muted-foreground hover:text-foreground transition-colors">Submit Dispute</Link>
             </nav>
           </div>
 
@@ -135,7 +180,7 @@ export function PageFooter() {
             <p className="text-xs tracking-[0.12em] uppercase text-foreground font-medium">Legal</p>
             <div className="flex flex-col gap-2.5">
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Scores are heuristic estimates. Not legal or financial advice.
+                Scores are heuristic estimates. Not financial advice.
               </p>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Anonymized dispute cases may be published in the public interest.
@@ -145,7 +190,7 @@ export function PageFooter() {
         </div>
 
         {/* Bottom bar */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 py-5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 py-5">
           <p className="text-xs text-muted-foreground">
             &copy; {currentYear} Verdict. Independent and unaffiliated.
           </p>
