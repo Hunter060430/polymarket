@@ -26,8 +26,11 @@ export async function fetchPolymarketEventsPage(offset: number): Promise<Polymar
     const res = await fetch(url.toString(), {
       signal: controller.signal,
       headers: { Accept: 'application/json' },
-      // Next.js fetch cache — reuse this individual page for 5 min.
-      next: { revalidate: 300 },
+      // Each page is 8-12MB, which exceeds Next.js's 2MB data-cache limit, so
+      // we don't attempt to cache at the fetch layer (it would just fail and
+      // log noise). Caching is handled by the in-memory layer in
+      // fetchAllActivePolymarketMarkets.
+      cache: 'no-store',
     })
     clearTimeout(timeoutId)
 
@@ -177,11 +180,43 @@ async function _fetchAllActivePolymarketMarkets(): Promise<NormalizedMarket[]> {
   return normalizePolymarketMarkets(events)
 }
 
-export const fetchAllActivePolymarketMarkets = unstable_cache(
-  _fetchAllActivePolymarketMarkets,
-  ['polymarket-active-markets-v3'],
-  { revalidate: 300, tags: ['polymarket-markets'] }
-)
+// NOTE: we deliberately do NOT wrap this in `unstable_cache`. The normalized
+// result is ~38MB, which exceeds Next.js's 2MB data-cache item limit — that
+// caused every request to throw "items over 2MB can not be cached" and fall
+// back to a full refetch + re-score (~8s per request).
+//
+// Instead we use a process-level in-memory cache with a 5-minute TTL plus
+// in-flight de-duplication, so concurrent renders share a single crawl and
+// repeat requests within the window are instant. The underlying per-page
+// fetches still carry `next: { revalidate: 300 }` as a second layer.
+const ACTIVE_TTL_MS = 5 * 60 * 1000
+let activeCache: { data: NormalizedMarket[]; expires: number } | null = null
+let activeInflight: Promise<NormalizedMarket[]> | null = null
+
+export async function fetchAllActivePolymarketMarkets(): Promise<NormalizedMarket[]> {
+  const now = Date.now()
+  if (activeCache && activeCache.expires > now) {
+    return activeCache.data
+  }
+  if (activeInflight) {
+    return activeInflight
+  }
+
+  activeInflight = _fetchAllActivePolymarketMarkets()
+    .then((data) => {
+      activeCache = { data, expires: Date.now() + ACTIVE_TTL_MS }
+      activeInflight = null
+      return data
+    })
+    .catch((err) => {
+      activeInflight = null
+      // Serve stale data if we have any, rather than failing the whole page.
+      if (activeCache) return activeCache.data
+      throw err
+    })
+
+  return activeInflight
+}
 
 // ---------------------------------------------------------------------------
 // Single market fetch — used by the detail page so it does NOT need to pull
@@ -254,7 +289,7 @@ async function fetchResolvedEventsPage(offset: number): Promise<PolymarketEvent[
     const res = await fetch(url.toString(), {
       signal:  controller.signal,
       headers: { Accept: 'application/json' },
-      next:    { revalidate: 600 },   // resolved markets change less often
+      cache:   'no-store',   // page payload exceeds 2MB cache limit; cached in-memory instead
     })
     clearTimeout(timeoutId)
     if (!res.ok) throw new Error(`Gamma API responded with ${res.status} at offset ${offset}`)
@@ -272,8 +307,31 @@ async function _fetchResolvedPolymarketMarkets(): Promise<NormalizedMarket[]> {
   return normalizePolymarketMarkets(events)
 }
 
-export const fetchResolvedPolymarketMarkets = unstable_cache(
-  _fetchResolvedPolymarketMarkets,
-  ['polymarket-resolved-markets-v1'],
-  { revalidate: 600, tags: ['polymarket-resolved'] }
-)
+// Same in-memory strategy as active markets (avoids the 2MB data-cache limit).
+const RESOLVED_TTL_MS = 10 * 60 * 1000
+let resolvedCache: { data: NormalizedMarket[]; expires: number } | null = null
+let resolvedInflight: Promise<NormalizedMarket[]> | null = null
+
+export async function fetchResolvedPolymarketMarkets(): Promise<NormalizedMarket[]> {
+  const now = Date.now()
+  if (resolvedCache && resolvedCache.expires > now) {
+    return resolvedCache.data
+  }
+  if (resolvedInflight) {
+    return resolvedInflight
+  }
+
+  resolvedInflight = _fetchResolvedPolymarketMarkets()
+    .then((data) => {
+      resolvedCache = { data, expires: Date.now() + RESOLVED_TTL_MS }
+      resolvedInflight = null
+      return data
+    })
+    .catch((err) => {
+      resolvedInflight = null
+      if (resolvedCache) return resolvedCache.data
+      throw err
+    })
+
+  return resolvedInflight
+}

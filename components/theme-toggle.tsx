@@ -12,6 +12,21 @@ export function ThemeToggle() {
 
   const isDark = resolvedTheme === 'dark'
 
+  // Until mounted, the client doesn't know the resolved theme, so the server
+  // and client must render an identical, theme-agnostic button to avoid a
+  // hydration mismatch on the aria-label and icon.
+  if (!mounted) {
+    return (
+      <button
+        type="button"
+        aria-label="Toggle theme"
+        className="inline-flex items-center justify-center size-9 text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <Sun className="size-4" aria-hidden="true" />
+      </button>
+    )
+  }
+
   return (
     <button
       type="button"
@@ -19,10 +34,7 @@ export function ThemeToggle() {
       aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
       className="inline-flex items-center justify-center size-9 text-muted-foreground hover:text-foreground transition-colors"
     >
-      {/* Avoid hydration mismatch — render a neutral icon until mounted */}
-      {!mounted ? (
-        <Sun className="size-4" aria-hidden="true" />
-      ) : isDark ? (
+      {isDark ? (
         <Sun className="size-4" aria-hidden="true" />
       ) : (
         <Moon className="size-4" aria-hidden="true" />

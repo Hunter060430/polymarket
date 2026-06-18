@@ -43,11 +43,30 @@ export async function generateMetadata({
 async function getMarkets(): Promise<MarketsApiResponse> {
   const markets = await fetchAllActivePolymarketMarkets()
   const uniqueEventIds = new Set(markets.map((m) => m.eventId))
+
+  // The list view renders ~8600 rows but only needs a handful of fields. The
+  // full objects (~38MB) include long `description` text and per-dimension
+  // `trace`/`dimensionDetails` that the list never reads — serializing all of
+  // that into the RSC payload was the dominant cost (multi-second warm loads).
+  // Strip the heavy fields here so the client receives a lean payload; the
+  // detail page fetches the complete market on demand via fetchMarketById.
+  const slim = markets.map((m) => ({
+    ...m,
+    description: '',
+    resolutionSource: '',
+    clobTokenIds: [],
+    score: {
+      ...m.score,
+      trace: undefined,
+      dimensionDetails: undefined,
+    },
+  }))
+
   return {
     scannedAt: new Date().toISOString(),
     eventCount: uniqueEventIds.size,
     marketCount: markets.length,
-    markets,
+    markets: slim,
   }
 }
 
