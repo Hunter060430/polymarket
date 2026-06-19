@@ -5,7 +5,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Pricing',
-  description: 'Verdict API plans — from a free open tier to Pro access with historical data and webhooks.',
+  description: 'Verdict is free. Web app, API, and everything included.',
 }
 
 type Tier = {
@@ -31,44 +31,6 @@ const TIERS: Tier[] = [
       { label: '100 requests / day', included: true },
       { label: 'Live clarity scores', included: true },
       { label: 'Scoring trace & methodology', included: true },
-      { label: 'Historical score snapshots', included: false },
-      { label: 'Webhook alerts', included: false },
-      { label: 'Commercial license', included: false },
-    ],
-  },
-  {
-    name: 'Pro',
-    price: '$49',
-    cadence: 'per month',
-    blurb: 'For quants, researchers, and desks that depend on Verdict data.',
-    cta: { label: 'Contact for access', href: 'mailto:hello@ver.watch?subject=Verdict%20Pro' },
-    featured: true,
-    features: [
-      { label: 'Full web app & dashboard', included: true },
-      { label: 'Public REST API', included: true },
-      { label: 'Unlimited requests', included: true },
-      { label: 'Live clarity scores', included: true },
-      { label: 'Scoring trace & methodology', included: true },
-      { label: 'Historical score snapshots', included: true },
-      { label: 'Webhook alerts', included: true },
-      { label: 'Commercial license', included: false },
-    ],
-  },
-  {
-    name: 'Enterprise',
-    price: 'Custom',
-    cadence: 'annual',
-    blurb: 'Dedicated infrastructure, SLAs, and a commercial redistribution license.',
-    cta: { label: 'Talk to us', href: 'mailto:hello@ver.watch?subject=Verdict%20Enterprise' },
-    features: [
-      { label: 'Full web app & dashboard', included: true },
-      { label: 'Public REST API', included: true },
-      { label: 'Unlimited requests', included: true },
-      { label: 'Live clarity scores', included: true },
-      { label: 'Scoring trace & methodology', included: true },
-      { label: 'Historical score snapshots', included: true },
-      { label: 'Webhook alerts', included: true },
-      { label: 'Commercial license', included: true },
     ],
   },
 ]
@@ -81,31 +43,23 @@ export default function PricingPage() {
 
         {/* Header */}
         <div className="border-b border-border pb-10 mb-10 text-center">
-          <p className="text-xs tracking-[0.16em] uppercase text-primary mb-3">Plans</p>
+          <p className="text-xs tracking-[0.16em] uppercase text-primary mb-3">No paywalls</p>
           <h1 className="font-heading text-4xl sm:text-5xl font-light tracking-tight text-foreground text-balance">
-            Pricing built for builders
+            Verdict is free forever
           </h1>
           <p className="text-sm text-muted-foreground mt-4 leading-relaxed max-w-xl mx-auto text-pretty">
-            The web app and a generous API tier are free forever. Upgrade only when you need
-            historical data, webhooks, or a commercial license.
+            Full web app, live clarity scores, scoring trace, and public API access. Everything you need to audit Polymarket resolution quality.
           </p>
         </div>
 
-        {/* Tiers */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-border border border-border">
+        {/* Free Tier */}
+        <div className="mx-auto w-full max-w-md">
           {TIERS.map((tier) => (
             <div
               key={tier.name}
-              className={`bg-background flex flex-col p-6 ${tier.featured ? 'ring-1 ring-inset ring-primary' : ''}`}
+              className="bg-background flex flex-col p-8 border border-border rounded-lg"
             >
-              <div className="flex items-center justify-between mb-1">
-                <h2 className="font-heading text-xl font-light text-foreground">{tier.name}</h2>
-                {tier.featured && (
-                  <span className="text-[10px] tracking-[0.1em] uppercase text-primary border border-primary px-2 py-0.5">
-                    Popular
-                  </span>
-                )}
-              </div>
+              <h2 className="font-heading text-2xl font-light text-foreground mb-1">{tier.name}</h2>
               <div className="flex items-baseline gap-1.5 mt-3 mb-2">
                 <span className="font-heading text-4xl font-light tabular-nums text-foreground">{tier.price}</span>
                 <span className="text-xs text-muted-foreground">{tier.cadence}</span>
@@ -114,11 +68,7 @@ export default function PricingPage() {
 
               <Link
                 href={tier.cta.href}
-                className={`text-center text-xs tracking-[0.08em] uppercase px-4 py-2.5 transition-colors mb-6 ${
-                  tier.featured
-                    ? 'bg-primary text-primary-foreground hover:opacity-90'
-                    : 'border border-border text-foreground hover:bg-secondary/40'
-                }`}
+                className="text-center text-xs tracking-[0.08em] uppercase px-4 py-2.5 bg-primary text-primary-foreground hover:opacity-90 transition-colors mb-6"
               >
                 {tier.cta.label}
               </Link>
