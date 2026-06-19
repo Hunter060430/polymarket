@@ -45,9 +45,9 @@ export function OraclePanel({ oracle, conditionId }: OraclePanelProps) {
 
       <dl className="divide-y divide-border">
         <div className="flex items-center justify-between gap-4 px-4 sm:px-5 py-3">
-          <dt className="text-xs tracking-[0.08em] uppercase text-muted-foreground">Resolved by</dt>
+          <dt className="text-xs tracking-[0.08em] uppercase text-muted-foreground">Resolution oracle</dt>
           <dd className="text-sm text-foreground text-right">
-            {oracle.resolvedBy || 'UMA Optimistic Oracle (default)'}
+            {oracle.resolvedBy || 'UMA Optimistic Oracle'}
           </dd>
         </div>
         {hasStatus && (
