@@ -193,18 +193,32 @@ export function PageFooter() {
             <p className="text-xs text-muted-foreground">
               Data sourced from the Polymarket Gamma API. Not affiliated with Polymarket.
             </p>
-            <a
-              href="https://x.com/GetVerdictHQ"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Verdict on X"
-              className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-fit"
-            >
-              <svg viewBox="0 0 24 24" className="size-3.5 fill-current shrink-0" aria-hidden="true">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622Zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-              </svg>
-              @GetVerdictHQ
-            </a>
+            <div className="flex items-center gap-3">
+              <a
+                href="https://x.com/GetVerdictHQ"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Verdict on X"
+                className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <svg viewBox="0 0 24 24" className="size-3.5 fill-current shrink-0" aria-hidden="true">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622Zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+                @GetVerdictHQ
+              </a>
+              <a
+                href="https://t.me/+DbhRNo2k5H1mY2Vl"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Verdict on Telegram"
+                className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <svg viewBox="0 0 24 24" className="size-3.5 fill-current shrink-0" aria-hidden="true">
+                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.336-.373-.123l-6.87 4.32-2.96-.924c-.64-.203-.658-.64.136-.954l11.566-4.458c.538-.197 1.006.128.832.941z" />
+                </svg>
+                Telegram
+              </a>
+            </div>
           </div>
 
           {/* Product column */}
