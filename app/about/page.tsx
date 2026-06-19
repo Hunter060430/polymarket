@@ -80,6 +80,51 @@ export default function AboutPage() {
           </p>
         </div>
 
+        {/* ── Origin story ──────────────────────────────── */}
+        <section className="border-b border-border pb-12 mb-12">
+          <h2 className="font-heading text-3xl font-light text-foreground mb-6">Our Story</h2>
+
+          <p className="text-lg sm:text-xl font-heading font-light text-foreground leading-relaxed max-w-2xl mb-8 text-pretty">
+            Verdict was born out of a real case of unfairness in the prediction market industry.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-sm text-muted-foreground leading-relaxed">
+            <p>
+              The project was founded by <span className="text-foreground">Hunter Guo</span>, a
+              20-year-old second-year student at King&apos;s College London. After personally
+              living through a highly controversial Polymarket settlement — a market resolved against
+              what he believed was the clear spirit of its own rules — Hunter realized that individual
+              users have almost no effective tools when facing opaque platform decisions.
+            </p>
+            <p>
+              For most traders, once a market is resolved unfairly, the options are bleak. You can
+              complain on social media, send emails that may never be answered, or simply accept the
+              loss. There is no public database of disputed resolutions, no structured way to preserve
+              evidence, and no neutral place for affected users to document what happened.
+            </p>
+            <p>
+              Verdict was built to change that. It is a non-profit, public-interest platform designed
+              to help users record, organize, and publish cases of unfair or controversial prediction
+              market resolutions — submitting experiences, preserving evidence, generating public case
+              cards, and contributing to a growing archive of disputed markets.
+            </p>
+            <p>
+              The goal is not revenge. It is transparency. Prediction markets can only survive if
+              users trust that rules are applied clearly, consistently, and fairly. Verdict aims to be
+              a public accountability layer for the industry — documenting disputes, exposing unclear
+              rules, and giving ordinary users a voice when platforms fail to listen.
+            </p>
+          </div>
+
+          <div className="mt-8 border-l-2 border-primary pl-5 py-1">
+            <p className="text-sm text-foreground leading-relaxed max-w-2xl">
+              Verdict is entirely public-interest driven. It issues no token, sells no financial
+              products, and never encourages harassment or abuse. Its purpose is simple: protect
+              users, preserve evidence, and push the industry toward fairer standards.
+            </p>
+          </div>
+        </section>
+
         {/* ── Mission ───────────────────────────────────── */}
         <section className="border-b border-border pb-12 mb-12">
           <h2 className="font-heading text-3xl font-light text-foreground mb-6">Mission</h2>
