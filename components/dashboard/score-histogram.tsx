@@ -86,7 +86,12 @@ export function ScoreHistogram({ markets }: ScoreHistogramProps) {
             allowDecimals={false}
           />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-secondary)', opacity: 0.4 }} />
-          <Bar dataKey="count" radius={0}>
+          {/* minPointSize keeps low-count bands (e.g. the handful of critical-
+              risk markets) visible. Without it, a band with ~3 markets next to
+              one with ~6000 renders as sub-pixel and disappears. A negative
+              value applies the minimum only to non-zero buckets, so truly empty
+              bands stay empty. */}
+          <Bar dataKey="count" radius={0} minPointSize={-3}>
             {buckets.map((entry) => (
               <Cell key={entry.bucket} fill={bucketColor(entry.bucket)} />
             ))}
