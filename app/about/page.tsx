@@ -103,16 +103,16 @@ export default function AboutPage() {
               evidence, and no neutral place for affected users to document what happened.
             </p>
             <p>
-              Verdict was built to change that. It is a non-profit, public-interest platform designed
-              to help users record, organize, and publish cases of unfair or controversial prediction
-              market resolutions — submitting experiences, preserving evidence, generating public case
-              cards, and contributing to a growing archive of disputed markets.
+              Verdict was built to change that. Today, the live product is an independent clarity
+              index: it scores every active Polymarket market on the quality of its written
+              resolution rules, before any money is at risk. That is the part you can use right now.
             </p>
             <p>
-              The goal is not revenge. It is transparency. Prediction markets can only survive if
-              users trust that rules are applied clearly, consistently, and fairly. Verdict aims to be
-              a public accountability layer for the industry — documenting disputes, exposing unclear
-              rules, and giving ordinary users a voice when platforms fail to listen.
+              The longer-term mission is bigger. We are building toward a non-profit, public-interest
+              archive where users can record, preserve, and publish cases of unfair or controversial
+              resolutions. The goal is not revenge — it is transparency: a public accountability layer
+              that documents disputes, exposes unclear rules, and gives ordinary users a voice when
+              platforms fail to listen.
             </p>
           </div>
 
@@ -122,6 +122,51 @@ export default function AboutPage() {
               products, and never encourages harassment or abuse. Its purpose is simple: protect
               users, preserve evidence, and push the industry toward fairer standards.
             </p>
+          </div>
+        </section>
+
+        {/* ── Roadmap ───────────────────────────────────── */}
+        <section className="border-b border-border pb-12 mb-12">
+          <h2 className="font-heading text-3xl font-light text-foreground mb-2">Roadmap</h2>
+          <p className="text-sm text-muted-foreground mb-8 leading-relaxed max-w-2xl">
+            We believe in shipping transparently. Here is exactly where the product stands today.
+          </p>
+          <div className="divide-y divide-border border-t border-border">
+            {[
+              {
+                status: 'Live now',
+                color: 'var(--risk-low)',
+                title: 'Clarity index',
+                body: 'Deterministic 0–100 scoring of every active Polymarket market across six dimensions, refreshed continuously and free to use.',
+              },
+              {
+                status: 'In development',
+                color: 'var(--risk-medium)',
+                title: 'Dispute archive',
+                body: 'A structured submission flow and public, searchable archive of disputed resolutions, with evidence preservation and shareable case cards.',
+              },
+              {
+                status: 'Planned',
+                color: 'var(--muted-foreground, #8a7e72)',
+                title: 'Historical tracking & open API',
+                body: 'Score history over time, correlation between clarity scores and real dispute rates, and a documented public API for the community.',
+              },
+            ].map((item) => (
+              <div key={item.title} className="py-7 grid grid-cols-1 lg:grid-cols-[200px_1fr] gap-3 lg:gap-12">
+                <div className="flex items-center gap-3">
+                  <span
+                    className="size-2 rounded-full shrink-0"
+                    style={{ backgroundColor: item.color }}
+                    aria-hidden="true"
+                  />
+                  <span className="text-xs tracking-[0.12em] uppercase text-muted-foreground">{item.status}</span>
+                </div>
+                <div>
+                  <p className="font-heading text-xl font-light text-foreground mb-1">{item.title}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{item.body}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 

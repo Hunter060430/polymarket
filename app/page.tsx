@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Nav, PageFooter } from '@/components/nav'
 import { ArrowRight, Shield, Clock, BookOpen, BarChart2, AlertTriangle, FileCheck } from 'lucide-react'
 import type { Metadata } from 'next'
+import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'
 
 export const metadata: Metadata = {
   // Use layout.tsx default title — avoids "Verdict — Verdict" from the template
@@ -10,12 +11,31 @@ export const metadata: Metadata = {
     'Independent scoring of Polymarket prediction markets. Know the resolution quality before you trade.',
 }
 
-const STATS = [
-  { value: '500+',  label: 'Markets scanned' },
-  { value: '6',     label: 'Scored dimensions' },
-  { value: '0–100', label: 'Clarity score' },
-  { value: '5 min', label: 'Cache refresh' },
-]
+// Compute live index stats from the cached market dataset. Falls back to safe
+// placeholders if the data feed is unavailable so the homepage never errors.
+async function getLiveStats() {
+  try {
+    const markets = await fetchAllActivePolymarketMarkets()
+    const total = markets.length
+    const critical = markets.filter((m) => m.score.riskLevel === 'Critical').length
+    const highOrWorse = markets.filter(
+      (m) => m.score.riskLevel === 'Critical' || m.score.riskLevel === 'High',
+    ).length
+    return [
+      { value: total.toLocaleString('en-US'), label: 'Markets scanned' },
+      { value: critical.toLocaleString('en-US'), label: 'Critical-risk markets' },
+      { value: highOrWorse.toLocaleString('en-US'), label: 'High-risk or worse' },
+      { value: '6', label: 'Scored dimensions' },
+    ]
+  } catch {
+    return [
+      { value: '8,000+', label: 'Markets scanned' },
+      { value: '6', label: 'Scored dimensions' },
+      { value: '0–100', label: 'Clarity score' },
+      { value: '5 min', label: 'Cache refresh' },
+    ]
+  }
+}
 
 const FEATURES = [
   {
@@ -57,7 +77,8 @@ const RISK_LEVELS = [
   { label: 'Critical', range: '0–39',   color: 'var(--risk-critical)', note: 'Substantially underspecified. High risk for all participants.' },
 ]
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const STATS = await getLiveStats()
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Nav />

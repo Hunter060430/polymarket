@@ -1,43 +1,61 @@
 import type { MetadataRoute } from 'next'
+import { SITE_URL } from '@/lib/site'
 import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'
 
-const BASE_URL = 'https://verdict.app'
+export const revalidate = 3600
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 300
+// Cap the number of market URLs so the sitemap stays well within the 50k-URL /
+// 50MB limits and generates quickly. The highest-volume markets are the most
+// valuable to index.
+const MAX_MARKET_URLS = 2000
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const markets = await fetchAllActivePolymarketMarkets().catch(() => [])
-
-  // Unique categories
-  const categories = [
-    ...new Set(markets.map((m) => m.eventCategory).filter(Boolean)),
-  ]
+  const now = new Date()
 
   const staticRoutes: MetadataRoute.Sitemap = [
-    { url: BASE_URL,                    lastModified: new Date(), changeFrequency: 'daily',   priority: 1.0 },
-    { url: `${BASE_URL}/dashboard`,     lastModified: new Date(), changeFrequency: 'hourly',  priority: 0.9 },
-    { url: `${BASE_URL}/markets`,       lastModified: new Date(), changeFrequency: 'hourly',  priority: 0.9 },
-    { url: `${BASE_URL}/markets/resolved`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.7 },
-    { url: `${BASE_URL}/methodology`,   lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
-    { url: `${BASE_URL}/about`,         lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
-    { url: `${BASE_URL}/api-docs`,      lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
-    { url: `${BASE_URL}/submit-dispute`,lastModified: new Date(), changeFrequency: 'monthly', priority: 0.4 },
+    { url: `${SITE_URL}`,                  lastModified: now, changeFrequency: 'hourly',  priority: 1.0 },
+    { url: `${SITE_URL}/dashboard`,        lastModified: now, changeFrequency: 'hourly',  priority: 0.9 },
+    { url: `${SITE_URL}/markets`,          lastModified: now, changeFrequency: 'hourly',  priority: 0.9 },
+    { url: `${SITE_URL}/markets/resolved`, lastModified: now, changeFrequency: 'daily',   priority: 0.7 },
+    { url: `${SITE_URL}/compare`,          lastModified: now, changeFrequency: 'weekly',  priority: 0.6 },
+    { url: `${SITE_URL}/methodology`,      lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${SITE_URL}/api-docs`,         lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${SITE_URL}/pricing`,          lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${SITE_URL}/about`,            lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${SITE_URL}/disclaimer`,       lastModified: now, changeFrequency: 'yearly',  priority: 0.3 },
   ]
 
-  const marketRoutes: MetadataRoute.Sitemap = markets.map((m) => ({
-    url:             `${BASE_URL}/markets/${m.marketId}`,
-    lastModified:    new Date(),
-    changeFrequency: 'hourly' as const,
-    priority:        0.8,
-  }))
+  try {
+    const markets = await fetchAllActivePolymarketMarkets()
 
-  const categoryRoutes: MetadataRoute.Sitemap = categories.map((cat) => ({
-    url:             `${BASE_URL}/markets/category/${encodeURIComponent(cat.toLowerCase().replace(/\s+/g, '-'))}`,
-    lastModified:    new Date(),
-    changeFrequency: 'hourly' as const,
-    priority:        0.7,
-  }))
+    // Highest-volume markets first.
+    const marketRoutes: MetadataRoute.Sitemap = [...markets]
+      .sort((a, b) => b.volume - a.volume)
+      .slice(0, MAX_MARKET_URLS)
+      .map((m) => ({
+        url: `${SITE_URL}/markets/${m.marketId}`,
+        lastModified: now,
+        changeFrequency: 'daily' as const,
+        priority: 0.6,
+      }))
 
-  return [...staticRoutes, ...categoryRoutes, ...marketRoutes]
+    // Unique category pages.
+    const categories = new Set<string>()
+    for (const m of markets) {
+      if (m.eventCategory) {
+        categories.add(m.eventCategory.toLowerCase().replace(/\s+/g, '-'))
+      }
+    }
+    const categoryRoutes: MetadataRoute.Sitemap = [...categories].map((slug) => ({
+      url: `${SITE_URL}/markets/category/${slug}`,
+      lastModified: now,
+      changeFrequency: 'daily' as const,
+      priority: 0.5,
+    }))
+
+    return [...staticRoutes, ...categoryRoutes, ...marketRoutes]
+  } catch {
+    // If the data feed is down, still return the static routes.
+    return staticRoutes
+  }
 }

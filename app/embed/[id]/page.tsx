@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { fetchAllActivePolymarketMarkets, fetchMarketById } from '@/lib/polymarket'
 import { polymarketUrl } from '@/lib/utils'
+import { SITE_URL } from '@/lib/site'
 import type { NormalizedMarket } from '@/lib/types'
 import type { Metadata } from 'next'
 
@@ -32,7 +33,7 @@ export default async function EmbedPage({ params }: { params: Promise<{ id: stri
     score.riskLevel === 'High'     ? 'var(--risk-high)'     :
     'var(--risk-critical)'
 
-  const appUrl = `https://verdict.app/markets/${market.marketId}`
+  const appUrl = `${SITE_URL}/markets/${market.marketId}`
 
   return (
     <div className="bg-background text-foreground font-sans p-4 min-h-screen flex items-center">
