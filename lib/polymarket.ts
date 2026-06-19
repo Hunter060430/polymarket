@@ -126,14 +126,28 @@ export function normalizePolymarketMarkets(events: PolymarketEvent[]): Normalize
         endDate,
       })
 
-      // Oracle / resolution metadata — Gamma sometimes includes UMA fields.
-      const umaStatus = (market.umaResolutionStatus ?? '').toString()
+      // Oracle / resolution metadata. Gamma returns the UMA lifecycle as an
+      // array under the plural key `umaResolutionStatuses`
+      // (e.g. ["proposed", "disputed", "resolved"]); fall back to the legacy
+      // singular string if only that is present.
+      const statusArray: string[] = Array.isArray(market.umaResolutionStatuses)
+        ? market.umaResolutionStatuses.map((s) => String(s))
+        : market.umaResolutionStatus
+        ? [String(market.umaResolutionStatus)]
+        : []
+      // Display the lifecycle as "proposed → disputed → resolved".
+      const umaStatus = statusArray.join(' → ')
       const resolvedBy = market.resolvedBy
         ? String(market.resolvedBy)
-        : umaStatus
+        : statusArray.length > 0
         ? 'UMA Optimistic Oracle'
         : ''
-      const hasDisputeSignal = /disput|challeng|propos|reject/i.test(umaStatus)
+      // A genuine dispute signal is an explicit dispute/challenge/rejection in
+      // the lifecycle — NOT the routine "proposed" step that every UMA market
+      // goes through, which is why the old regex over-counted.
+      const hasDisputeSignal = statusArray.some((s) =>
+        /disput|challeng|reject/i.test(s),
+      )
 
       markets.push({
         eventId: event.id ?? '',

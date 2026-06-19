@@ -16,7 +16,11 @@ export interface PolymarketMarket {
   // Market dynamics (Gamma API)
   oneDayPriceChange?: number
   volume24hr?: string | number
-  // Oracle / resolution (UMA) — present on some Gamma responses
+  // Oracle / resolution (UMA) — present on some Gamma responses.
+  // The Gamma API returns the lifecycle as an ARRAY under the plural key
+  // `umaResolutionStatuses`, e.g. ["proposed", "disputed", "resolved"].
+  // The singular form is kept only as a legacy fallback.
+  umaResolutionStatuses?: string[]
   umaResolutionStatus?: string
   umaBond?: string | number
   umaReward?: string | number
