@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: 'Public REST API for Verdict market clarity scores. Free, open, no auth required.',
 }
 
-const ENDPOINT = 'https://verdict.app/api/markets'
+const ENDPOINT = 'https://ver.watch/api/markets'
 
 const PARAMS = [
   { name: 'risk',      type: 'string',  default: '—',    desc: 'Filter by risk level. One of: Critical, High, Medium, Low.' },

@@ -41,7 +41,7 @@ const TIERS: Tier[] = [
     price: '$49',
     cadence: 'per month',
     blurb: 'For quants, researchers, and desks that depend on Verdict data.',
-    cta: { label: 'Contact for access', href: 'mailto:hello@verdict.app?subject=Verdict%20Pro' },
+    cta: { label: 'Contact for access', href: 'mailto:hello@ver.watch?subject=Verdict%20Pro' },
     featured: true,
     features: [
       { label: 'Full web app & dashboard', included: true },
@@ -59,7 +59,7 @@ const TIERS: Tier[] = [
     price: 'Custom',
     cadence: 'annual',
     blurb: 'Dedicated infrastructure, SLAs, and a commercial redistribution license.',
-    cta: { label: 'Talk to us', href: 'mailto:hello@verdict.app?subject=Verdict%20Enterprise' },
+    cta: { label: 'Talk to us', href: 'mailto:hello@ver.watch?subject=Verdict%20Enterprise' },
     features: [
       { label: 'Full web app & dashboard', included: true },
       { label: 'Public REST API', included: true },
@@ -144,7 +144,7 @@ export default function PricingPage() {
           Prices are indicative while Verdict is in beta. Academic and journalistic use of the free
           tier is always permitted. Questions?{' '}
           <a
-            href="mailto:hello@verdict.app"
+            href="mailto:hello@ver.watch"
             className="text-primary hover:underline underline-offset-4"
           >
             Get in touch
