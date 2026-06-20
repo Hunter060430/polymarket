@@ -1,25 +1,13 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { DefaultChatTransport } from 'ai'
-import { useChat } from '@ai-sdk/react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Send, RotateCcw, Sparkles } from 'lucide-react'
-import type { Metadata } from 'next'
 
 // ── Math captcha ──────────────────────────────────────────────────────────────
 function generateCaptcha() {
   const a = Math.floor(Math.random() * 9) + 1
   const b = Math.floor(Math.random() * 9) + 1
   return { a, b, answer: a + b }
-}
-
-// ── Helper: extract text from UIMessage parts ─────────────────────────────────
-function getMessageText(parts: unknown[]): string {
-  if (!Array.isArray(parts)) return ''
-  return parts
-    .filter((p): p is { type: 'text'; text: string } => (p as { type: string }).type === 'text')
-    .map((p) => p.text)
-    .join('')
 }
 
 // ── Rate limit (localStorage) ─────────────────────────────────────────────────
@@ -30,36 +18,35 @@ function getTodayUTC() {
   return new Date().toISOString().slice(0, 10)
 }
 
-function getUsageState(): { date: string; captchaSessions: number; countInSession: number } {
+function getRemainingInSession(): number {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return { date: getTodayUTC(), captchaSessions: 0, countInSession: 0 }
-    return JSON.parse(raw)
+    if (!raw) return MAX_PER_CAPTCHA
+    const s = JSON.parse(raw)
+    if (s.date !== getTodayUTC()) return MAX_PER_CAPTCHA
+    return Math.max(0, MAX_PER_CAPTCHA - (s.countInSession ?? 0))
   } catch {
-    return { date: getTodayUTC(), captchaSessions: 0, countInSession: 0 }
+    return MAX_PER_CAPTCHA
   }
-}
-
-function getRemainingInSession(): number {
-  const s = getUsageState()
-  if (s.date !== getTodayUTC()) return MAX_PER_CAPTCHA
-  return Math.max(0, MAX_PER_CAPTCHA - s.countInSession)
 }
 
 function consumeOne(): number {
   const today = getTodayUTC()
-  const s = getUsageState()
-  const base = s.date === today ? s : { date: today, captchaSessions: 0, countInSession: 0 }
-  const next = { ...base, countInSession: base.countInSession + 1 }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-  return Math.max(0, MAX_PER_CAPTCHA - next.countInSession)
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    const s = raw ? JSON.parse(raw) : { date: today, countInSession: 0 }
+    const base = s.date === today ? s : { date: today, countInSession: 0 }
+    const next = { ...base, countInSession: base.countInSession + 1 }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    return Math.max(0, MAX_PER_CAPTCHA - next.countInSession)
+  } catch {
+    return 0
+  }
 }
 
 function resetSessionCount() {
   const today = getTodayUTC()
-  const s = getUsageState()
-  const next = { date: today, captchaSessions: (s.date === today ? s.captchaSessions : 0) + 1, countInSession: 0 }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ date: today, countInSession: 0 }))
 }
 
 // ── Suggested prompts ─────────────────────────────────────────────────────────
@@ -71,9 +58,18 @@ const SUGGESTIONS = [
   'Are there any Critical-risk markets ending this month?',
 ]
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface Message {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function AskPage() {
   const [input, setInput] = useState('')
+  const [messages, setMessages] = useState<Message[]>([])
+  const [isStreaming, setIsStreaming] = useState(false)
   const [remaining, setRemaining] = useState(MAX_PER_CAPTCHA)
 
   // Captcha
@@ -85,25 +81,6 @@ export default function AskPage() {
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
-
-  const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({
-      api: '/api/ask',
-      prepareSendMessagesRequest: ({ id, messages: msgs }) => {
-        const last = msgs[msgs.length - 1]
-        const text = last
-          ? getMessageText((last as { parts?: unknown[] }).parts ?? []) ||
-            (last as { content?: string }).content ||
-            ''
-          : ''
-        return {
-          body: { question: text, captchaToken, id },
-        }
-      },
-    }),
-  })
-
-  const isStreaming = status === 'streaming' || status === 'submitted'
 
   useEffect(() => {
     setRemaining(getRemainingInSession())
@@ -139,23 +116,90 @@ export default function AskPage() {
     setCaptcha(generateCaptcha())
   }
 
-  async function handleSubmit(e?: React.FormEvent) {
-    e?.preventDefault()
-    if (!input.trim() || isStreaming || remaining <= 0 || !captchaSolved) return
+  const handleSubmit = useCallback(
+    async (questionText?: string) => {
+      const text = (questionText ?? input).trim()
+      if (!text || isStreaming || remaining <= 0 || !captchaSolved || !captchaToken) return
 
-    const newRemaining = consumeOne()
-    setRemaining(newRemaining)
+      const newRemaining = consumeOne()
+      setRemaining(newRemaining)
 
-    sendMessage({ text: input.trim() })
-    setInput('')
+      const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content: text }
+      setMessages((prev) => [...prev, userMsg])
+      setInput('')
+      setIsStreaming(true)
 
-    // When session exhausted, require new captcha
-    if (newRemaining <= 0) {
-      resetCaptcha()
-    }
-  }
+      const assistantId = crypto.randomUUID()
+      setMessages((prev) => [...prev, { id: assistantId, role: 'assistant', content: '' }])
 
-  const hasMessages = messages.length > 0
+      try {
+        const res = await fetch('/api/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: text, captchaToken }),
+        })
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId
+                ? { ...m, content: err.message ?? 'Something went wrong. Please try again.' }
+                : m,
+            ),
+          )
+          setIsStreaming(false)
+          return
+        }
+
+        // Read the SSE stream and extract text-delta chunks
+        const reader = res.body!.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() ?? ''
+
+          for (const line of lines) {
+            const trimmed = line.trim()
+            if (!trimmed.startsWith('data:')) continue
+            const data = trimmed.slice(5).trim()
+            if (data === '[DONE]') continue
+            try {
+              const chunk = JSON.parse(data)
+              // AI SDK UIMessageStream emits type:"text-delta" with delta field
+              if (chunk.type === 'text-delta' && typeof chunk.delta === 'string') {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId ? { ...m, content: m.content + chunk.delta } : m,
+                  ),
+                )
+              }
+            } catch {
+              // ignore unparseable lines
+            }
+          }
+        }
+      } catch {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? { ...m, content: 'Network error. Please check your connection and try again.' }
+              : m,
+          ),
+        )
+      } finally {
+        setIsStreaming(false)
+        if (newRemaining <= 0) resetCaptcha()
+      }
+    },
+    [input, isStreaming, remaining, captchaSolved, captchaToken],
+  )
 
   return (
     <main className="flex flex-col h-[calc(100vh-3.5rem)] max-w-3xl mx-auto px-4 sm:px-6">
@@ -176,14 +220,13 @@ export default function AskPage() {
 
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto min-h-0 py-2">
-        {!hasMessages ? (
-          /* Empty state — suggestions */
+        {messages.length === 0 ? (
           <div className="space-y-2 pt-2">
             <p className="text-[11px] text-muted-foreground tracking-wide uppercase mb-3">Try asking</p>
             {SUGGESTIONS.map((s) => (
               <button
                 key={s}
-                onClick={() => { setInput(s); inputRef.current?.focus() }}
+                onClick={() => handleSubmit(s)}
                 className="block w-full text-left text-sm text-muted-foreground border border-border px-4 py-2.5 hover:bg-secondary/40 hover:text-foreground transition-colors"
               >
                 {s}
@@ -192,46 +235,41 @@ export default function AskPage() {
           </div>
         ) : (
           <div className="space-y-6 pb-4">
-            {messages.map((msg: { id: string; role: string; parts?: unknown[]; content?: string }) => {
-              const text = getMessageText(msg.parts ?? []) || msg.content || ''
-              if (!text) return null
-              return (
-                <div key={msg.id} className={msg.role === 'user' ? 'flex justify-end' : ''}>
-                  {msg.role === 'user' ? (
-                    <div className="max-w-[80%] bg-secondary/60 border border-border px-4 py-2.5 text-sm text-foreground">
-                      {text}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                      <p className="text-[10px] tracking-[0.1em] uppercase text-primary mb-2">Verdict AI</p>
-                      {text}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-
-            {isStreaming && (
-              <div>
-                <p className="text-[10px] tracking-[0.1em] uppercase text-primary mb-2">Verdict AI</p>
-                <div className="flex gap-1.5 py-1">
-                  <span className="size-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:0ms]" />
-                  <span className="size-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:150ms]" />
-                  <span className="size-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:300ms]" />
-                </div>
+            {messages.map((msg) => (
+              <div key={msg.id} className={msg.role === 'user' ? 'flex justify-end' : ''}>
+                {msg.role === 'user' ? (
+                  <div className="max-w-[80%] bg-secondary/60 border border-border px-4 py-2.5 text-sm text-foreground">
+                    {msg.content}
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-[10px] tracking-[0.1em] uppercase text-primary mb-2">Verdict AI</p>
+                    {msg.content ? (
+                      <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                        {msg.content}
+                      </p>
+                    ) : isStreaming ? (
+                      <div className="flex gap-1.5 py-1">
+                        <span className="size-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:0ms]" />
+                        <span className="size-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:150ms]" />
+                        <span className="size-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:300ms]" />
+                      </div>
+                    ) : null}
+                  </div>
+                )}
               </div>
-            )}
+            ))}
             <div ref={bottomRef} />
           </div>
         )}
       </div>
 
       {/* Bottom input area */}
-      <div className="shrink-0 border-t border-border pb-4 pt-3 space-y-3">
+      <div className="shrink-0 border-t border-border pb-6 pt-3 space-y-3">
 
-        {/* Captcha */}
+        {/* Captcha / status */}
         {!captchaSolved ? (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <span className="text-[10px] tracking-wide uppercase text-muted-foreground shrink-0">Verify</span>
             <span className="font-mono text-sm text-foreground bg-secondary/50 border border-border px-3 py-1.5 select-none shrink-0">
               {captcha.a} + {captcha.b} = ?
@@ -257,7 +295,7 @@ export default function AskPage() {
         ) : (
           <div className="flex items-center justify-between">
             <p className="text-[10px] text-primary/70 tracking-wide">
-              Verified — {remaining}/{MAX_PER_CAPTCHA} questions remaining
+              Verified — {remaining}/{MAX_PER_CAPTCHA} questions remaining in this session
             </p>
             {remaining <= 0 && (
               <button
@@ -273,7 +311,10 @@ export default function AskPage() {
 
         {/* Text input */}
         {remaining > 0 ? (
-          <form onSubmit={handleSubmit} className="flex gap-2">
+          <form
+            onSubmit={(e) => { e.preventDefault(); handleSubmit() }}
+            className="flex gap-2"
+          >
             <textarea
               ref={inputRef}
               value={input}
