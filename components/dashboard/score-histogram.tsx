@@ -97,7 +97,11 @@ export function ScoreHistogram({ markets }: ScoreHistogramProps) {
             <LabelList
               dataKey="count"
               position="top"
-              formatter={(v: number) => v > 0 ? (v >= 1000 ? `${(v/1000).toFixed(1)}k` : v) : ''}
+              formatter={(v: unknown) => {
+                const n = Number(v)
+                if (!n) return ''
+                return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
+              }}
               style={{ fontSize: 9, fill: 'var(--color-muted-foreground)' }}
             />
           </Bar>
