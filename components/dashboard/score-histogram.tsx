@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList
 } from 'recharts'
 import type { NormalizedMarket } from '@/lib/types'
 
@@ -71,8 +71,8 @@ export function ScoreHistogram({ markets }: ScoreHistogramProps) {
         </div>
       </div>
 
-      <ResponsiveContainer width="100%" height={160}>
-        <BarChart data={buckets} barCategoryGap="20%" margin={{ top: 0, right: 0, left: -28, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={180}>
+        <BarChart data={buckets} barCategoryGap="18%" margin={{ top: 16, right: 0, left: -10, bottom: 0 }}>
           <XAxis
             dataKey="label"
             tick={{ fontSize: 10, fill: 'var(--color-muted-foreground)' }}
@@ -84,17 +84,22 @@ export function ScoreHistogram({ markets }: ScoreHistogramProps) {
             tickLine={false}
             axisLine={false}
             allowDecimals={false}
+            width={36}
+            tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : String(v)}
           />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-secondary)', opacity: 0.4 }} />
-          {/* minPointSize keeps low-count bands (e.g. the handful of critical-
-              risk markets) visible. Without it, a band with ~3 markets next to
-              one with ~6000 renders as sub-pixel and disappears. A negative
-              value applies the minimum only to non-zero buckets, so truly empty
-              bands stay empty. */}
-          <Bar dataKey="count" radius={0} minPointSize={-3}>
+          {/* minPointSize={4} ensures non-zero buckets (e.g. 3 critical markets)
+              are always visible even next to a 6000-bar. */}
+          <Bar dataKey="count" radius={[2, 2, 0, 0]} minPointSize={4}>
             {buckets.map((entry) => (
               <Cell key={entry.bucket} fill={bucketColor(entry.bucket)} />
             ))}
+            <LabelList
+              dataKey="count"
+              position="top"
+              formatter={(v: number) => v > 0 ? (v >= 1000 ? `${(v/1000).toFixed(1)}k` : v) : ''}
+              style={{ fontSize: 9, fill: 'var(--color-muted-foreground)' }}
+            />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
