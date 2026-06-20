@@ -10,9 +10,9 @@ interface ScoreHistogramProps {
 }
 
 function bucketColor(bucket: number): string {
-  if (bucket >= 75) return 'var(--risk-low)'
-  if (bucket >= 55) return 'var(--risk-medium)'
-  if (bucket >= 38) return 'var(--risk-high)'
+  if (bucket >= 70) return 'var(--risk-low)'
+  if (bucket >= 50) return 'var(--risk-medium)'
+  if (bucket >= 30) return 'var(--risk-high)'
   return 'var(--risk-critical)'
 }
 
@@ -23,22 +23,22 @@ interface TooltipPayloadItem {
 function CustomTooltip({ active, payload, label }: {
   active?: boolean
   payload?: TooltipPayloadItem[]
-  label?: number
+  label?: string
 }) {
   if (!active || !payload?.length) return null
   return (
     <div className="bg-background border border-border px-3 py-2 text-xs shadow-sm">
-      <p className="font-medium text-foreground">{label}–{(label ?? 0) + 9}</p>
+      <p className="font-medium text-foreground">Score {label}</p>
       <p className="text-muted-foreground mt-0.5">{payload[0].value} market{payload[0].value !== 1 ? 's' : ''}</p>
     </div>
   )
 }
 
 export function ScoreHistogram({ markets }: ScoreHistogramProps) {
-  // Build 10 buckets: 0–9, 10–19, … 90–99
+  // Build 10 buckets: 0–10, 10–20, … 90–100
   const buckets = Array.from({ length: 10 }, (_, i) => ({
     bucket: i * 10,
-    label: `${i * 10}`,
+    label: `${i * 10}–${i * 10 + 10}`,
     count: 0,
   }))
 
@@ -71,13 +71,14 @@ export function ScoreHistogram({ markets }: ScoreHistogramProps) {
         </div>
       </div>
 
-      <ResponsiveContainer width="100%" height={180}>
-        <BarChart data={buckets} barCategoryGap="18%" margin={{ top: 16, right: 0, left: -10, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={190}>
+        <BarChart data={buckets} barCategoryGap="18%" margin={{ top: 16, right: 0, left: -10, bottom: 20 }}>
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 10, fill: 'var(--color-muted-foreground)' }}
+            tick={{ fontSize: 9, fill: 'var(--color-muted-foreground)', angle: -35, textAnchor: 'end', dy: 4 }}
             tickLine={false}
             axisLine={{ stroke: 'var(--color-border)' }}
+            interval={0}
           />
           <YAxis
             tick={{ fontSize: 10, fill: 'var(--color-muted-foreground)' }}
