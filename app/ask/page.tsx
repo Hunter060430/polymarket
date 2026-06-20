@@ -172,13 +172,14 @@ export default function AskPage() {
             if (data === '[DONE]') continue
             try {
               const chunk = JSON.parse(data)
-              // AI SDK UIMessageStream emits type:"text-delta" with delta field
-              if (chunk.type === 'text-delta' && typeof chunk.delta === 'string') {
+              if (chunk.type === 'delta' && typeof chunk.text === 'string') {
                 setMessages((prev) =>
                   prev.map((m) =>
-                    m.id === assistantId ? { ...m, content: m.content + chunk.delta } : m,
+                    m.id === assistantId ? { ...m, content: m.content + chunk.text } : m,
                   ),
                 )
+              } else if (chunk.type === 'remaining' && typeof chunk.remaining === 'number') {
+                setRemaining(chunk.remaining)
               }
             } catch {
               // ignore unparseable lines

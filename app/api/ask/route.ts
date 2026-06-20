@@ -1,108 +1,142 @@
-import { streamText } from 'ai'
-import { createOpenAI } from '@ai-sdk/openai'
 import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'
-import { headers } from 'next/headers'
 
-const deepseek = createOpenAI({
-  apiKey: process.env.DEEPSEEK_API_KEY ?? '',
-  baseURL: 'https://api.deepseek.com/v1',
-})
-
-// In-memory rate limiter: fingerprint → { count, date }
+// In-memory rate limiter: ip → { count, date }
 const rateLimitMap = new Map<string, { count: number; date: string }>()
+const MAX_PER_DAY = 5
 
-function getTodayUTC(): string {
+function getTodayUTC() {
   return new Date().toISOString().slice(0, 10)
 }
 
-const MAX_PER_CAPTCHA = 5
+function sse(obj: unknown) {
+  return `data: ${JSON.stringify(obj)}\n\n`
+}
 
 export async function POST(req: Request) {
-  const headersList = await headers()
-
-  // Device fingerprint
   const ip =
-    headersList.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    headersList.get('x-real-ip') ??
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    req.headers.get('x-real-ip') ??
     'unknown'
-  const ua = headersList.get('user-agent') ?? ''
-  const fingerprint = `${ip}::${ua.slice(0, 60)}`
   const today = getTodayUTC()
+  const entry = rateLimitMap.get(ip)
 
-  const existing = rateLimitMap.get(fingerprint)
-  if (existing && existing.date === today && existing.count >= MAX_PER_CAPTCHA) {
-    return new Response(
-      JSON.stringify({ error: 'rate_limit', message: 'Daily limit reached.' }),
-      { status: 429, headers: { 'Content-Type': 'application/json' } },
-    )
+  if (entry && entry.date === today && entry.count >= MAX_PER_DAY) {
+    return Response.json({ error: 'Daily limit of 5 questions reached.' }, { status: 429 })
   }
-
-  if (existing && existing.date === today) {
-    existing.count++
+  if (entry && entry.date === today) {
+    entry.count++
   } else {
-    rateLimitMap.set(fingerprint, { count: 1, date: today })
+    rateLimitMap.set(ip, { count: 1, date: today })
   }
+  const remaining = MAX_PER_DAY - (rateLimitMap.get(ip)?.count ?? 1)
 
-  const remaining = MAX_PER_CAPTCHA - (rateLimitMap.get(fingerprint)?.count ?? 1)
-
-  const body = await req.json()
-  const { question, captchaToken } = body as { question?: string; captchaToken?: string }
-
-  if (!captchaToken) {
-    return new Response(
-      JSON.stringify({ error: 'captcha', message: 'Please complete the verification first.' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } },
-    )
-  }
-
+  const { question } = (await req.json()) as { question?: string }
   if (!question?.trim()) {
-    return new Response(
-      JSON.stringify({ error: 'empty', message: 'Please enter a question.' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } },
-    )
+    return Response.json({ error: 'Question is required.' }, { status: 400 })
   }
 
-  // Fetch active markets
-  let markets: Awaited<ReturnType<typeof fetchAllActivePolymarketMarkets>> = []
+  const apiKey = process.env.DEEPSEEK_API_KEY
+  if (!apiKey) {
+    return Response.json({ error: 'AI service not configured.' }, { status: 500 })
+  }
+
+  // Fetch market data
+  let marketContext = '(market data unavailable)'
   try {
-    markets = await fetchAllActivePolymarketMarkets()
-  } catch {
-    markets = []
-  }
+    const markets = await fetchAllActivePolymarketMarkets()
+    marketContext = markets
+      .slice(0, 250)
+      .map(
+        (m, i) =>
+          `${i + 1}. [Score:${m.score?.totalScore ?? '?'}/Risk:${m.score?.riskLevel ?? '?'}] ${m.question} (Volume:$${Number(m.volume ?? 0).toLocaleString()}, Ends:${m.endDate ?? 'N/A'})`,
+      )
+      .join('\n')
+  } catch { /* use fallback */ }
 
-  const marketContext = markets
-    .slice(0, 300)
-    .map(
-      (m, i) =>
-        `${i + 1}. [Score:${m.score?.totalScore ?? '?'}/Risk:${m.score?.riskLevel ?? '?'}] ${m.question} (Ends: ${m.endDate ?? 'unknown'}, Volume: $${Number(m.volume ?? 0).toLocaleString()})`,
-    )
-    .join('\n')
+  const systemPrompt = `You are Verdict AI, an expert analyst of Polymarket prediction markets.
+You have real-time data on active markets scored by the Verdict clarity system.
 
-  const systemPrompt = `You are Verdict AI, an expert analyst of Polymarket prediction markets. You have real-time access to ${markets.length} active markets and their clarity/risk scores from the Verdict scoring system.
+Scoring: 0-30 = Critical risk, 30-50 = High risk, 50-70 = Medium risk, 70-100 = Low risk.
+Higher score = clearer resolution rules = less dispute risk.
 
-Scoring system:
-- Score 0–30: Critical risk (very ambiguous resolution rules)
-- Score 30–50: High risk
-- Score 50–70: Medium risk  
-- Score 70–100: Low risk (clear, unambiguous rules)
-
-Active markets data:
+ACTIVE MARKETS:
 ${marketContext}
 
-Instructions:
-- Always respond in English regardless of the user's language.
-- Be concise and analytical.
-- When listing markets, include their score and risk level.
-- Format responses with clear structure when listing multiple markets.`
+Rules: Always respond in English. Be concise and analytical. Reference specific markets with their scores when relevant.`
 
-  const result = streamText({
-    model: deepseek('deepseek-chat'),
-    system: systemPrompt,
-    messages: [{ role: 'user', content: question.trim() }],
-    maxOutputTokens: 1200,
+  // Call DeepSeek streaming directly
+  const dsRes = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      stream: true,
+      max_tokens: 1024,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: question.trim() },
+      ],
+    }),
   })
 
-  return result.toUIMessageStreamResponse({
-    headers: { 'X-Remaining': String(remaining) },
+  if (!dsRes.ok) {
+    const errText = await dsRes.text()
+    console.error('[ask] DeepSeek API error:', errText)
+    return Response.json({ error: 'AI service error.' }, { status: 502 })
+  }
+
+  const encoder = new TextEncoder()
+  const body = dsRes.body!
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const reader = body.getReader()
+      const decoder = new TextDecoder()
+      let buf = ''
+
+      // First event: how many questions remain today
+      controller.enqueue(encoder.encode(sse({ type: 'remaining', remaining })))
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buf += decoder.decode(value, { stream: true })
+          const lines = buf.split('\n')
+          buf = lines.pop() ?? ''
+
+          for (const line of lines) {
+            const trimmed = line.trim()
+            if (!trimmed.startsWith('data:')) continue
+            const payload = trimmed.slice(5).trim()
+            if (payload === '[DONE]') {
+              controller.enqueue(encoder.encode(sse({ type: 'done' })))
+              continue
+            }
+            try {
+              const chunk = JSON.parse(payload)
+              const delta = chunk.choices?.[0]?.delta?.content
+              if (delta) {
+                controller.enqueue(encoder.encode(sse({ type: 'delta', text: delta })))
+              }
+            } catch { /* skip malformed */ }
+          }
+        }
+      } finally {
+        controller.close()
+        reader.releaseLock()
+      }
+    },
+  })
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    },
   })
 }
