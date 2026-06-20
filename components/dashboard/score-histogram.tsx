@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList
 } from 'recharts'
 import type { NormalizedMarket } from '@/lib/types'
 
@@ -10,9 +10,9 @@ interface ScoreHistogramProps {
 }
 
 function bucketColor(bucket: number): string {
-  if (bucket >= 75) return 'var(--risk-low)'
-  if (bucket >= 55) return 'var(--risk-medium)'
-  if (bucket >= 38) return 'var(--risk-high)'
+  if (bucket >= 70) return 'var(--risk-low)'
+  if (bucket >= 50) return 'var(--risk-medium)'
+  if (bucket >= 30) return 'var(--risk-high)'
   return 'var(--risk-critical)'
 }
 
@@ -23,22 +23,22 @@ interface TooltipPayloadItem {
 function CustomTooltip({ active, payload, label }: {
   active?: boolean
   payload?: TooltipPayloadItem[]
-  label?: number
+  label?: string
 }) {
   if (!active || !payload?.length) return null
   return (
     <div className="bg-background border border-border px-3 py-2 text-xs shadow-sm">
-      <p className="font-medium text-foreground">{label}–{(label ?? 0) + 9}</p>
+      <p className="font-medium text-foreground">Score {label}</p>
       <p className="text-muted-foreground mt-0.5">{payload[0].value} market{payload[0].value !== 1 ? 's' : ''}</p>
     </div>
   )
 }
 
 export function ScoreHistogram({ markets }: ScoreHistogramProps) {
-  // Build 10 buckets: 0–9, 10–19, … 90–99
+  // Build 10 buckets: 0–10, 10–20, … 90–100
   const buckets = Array.from({ length: 10 }, (_, i) => ({
     bucket: i * 10,
-    label: `${i * 10}`,
+    label: `${i * 10}–${i * 10 + 10}`,
     count: 0,
   }))
 
@@ -71,30 +71,40 @@ export function ScoreHistogram({ markets }: ScoreHistogramProps) {
         </div>
       </div>
 
-      <ResponsiveContainer width="100%" height={160}>
-        <BarChart data={buckets} barCategoryGap="20%" margin={{ top: 0, right: 0, left: -28, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={190}>
+        <BarChart data={buckets} barCategoryGap="18%" margin={{ top: 16, right: 0, left: -10, bottom: 20 }}>
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 10, fill: 'var(--color-muted-foreground)' }}
+            tick={{ fontSize: 9, fill: 'var(--color-muted-foreground)', angle: -35, textAnchor: 'end', dy: 4 }}
             tickLine={false}
             axisLine={{ stroke: 'var(--color-border)' }}
+            interval={0}
           />
           <YAxis
             tick={{ fontSize: 10, fill: 'var(--color-muted-foreground)' }}
             tickLine={false}
             axisLine={false}
             allowDecimals={false}
+            width={36}
+            tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : String(v)}
           />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-secondary)', opacity: 0.4 }} />
-          {/* minPointSize keeps low-count bands (e.g. the handful of critical-
-              risk markets) visible. Without it, a band with ~3 markets next to
-              one with ~6000 renders as sub-pixel and disappears. A negative
-              value applies the minimum only to non-zero buckets, so truly empty
-              bands stay empty. */}
-          <Bar dataKey="count" radius={0} minPointSize={-3}>
+          {/* minPointSize={4} ensures non-zero buckets (e.g. 3 critical markets)
+              are always visible even next to a 6000-bar. */}
+          <Bar dataKey="count" radius={[2, 2, 0, 0]} minPointSize={4}>
             {buckets.map((entry) => (
               <Cell key={entry.bucket} fill={bucketColor(entry.bucket)} />
             ))}
+            <LabelList
+              dataKey="count"
+              position="top"
+              formatter={(v: unknown) => {
+                const n = Number(v)
+                if (!n) return ''
+                return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
+              }}
+              style={{ fontSize: 9, fill: 'var(--color-muted-foreground)' }}
+            />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
