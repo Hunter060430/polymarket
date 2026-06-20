@@ -8,7 +8,6 @@ import { MarketsListClient } from '@/components/markets/markets-list-client'
 import { AlertCircle } from 'lucide-react'
 import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'
 import type { MarketsApiResponse } from '@/lib/types'
-import AskAIPanel from '@/components/markets/ask-ai-panel'
 
 // ── Dynamic metadata ──────────────────────────────────────────────────────────
 
@@ -142,7 +141,6 @@ export default async function MarketsPage({
         </Suspense>
       </main>
       <PageFooter />
-      <AskAIPanel />
     </div>
   )
 }

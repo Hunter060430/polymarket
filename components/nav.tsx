@@ -14,9 +14,10 @@ const NAV_LINKS = [
   { href: '/markets',          label: 'Markets'        },
   { href: '/compare',          label: 'Compare'        },
   { href: '/markets/resolved', label: 'Resolved'       },
-  { href: '/methodology',    label: 'Methodology'    },
-  { href: '/api-docs',       label: 'API'            },
-  { href: '/about',          label: 'About'          },
+  { href: '/ask',              label: 'Ask AI'         },
+  { href: '/methodology',      label: 'Methodology'    },
+  { href: '/api-docs',         label: 'API'            },
+  { href: '/about',            label: 'About'          },
 ]
 
 export function Nav() {
