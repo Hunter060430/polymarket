@@ -71,6 +71,7 @@ export default function AskPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [remaining, setRemaining] = useState(MAX_PER_CAPTCHA)
+  const [marketCount, setMarketCount] = useState<number | null>(null)
 
   // Captcha
   const [captcha, setCaptcha] = useState(generateCaptcha)
@@ -180,6 +181,8 @@ export default function AskPage() {
                 )
               } else if (chunk.type === 'remaining' && typeof chunk.remaining === 'number') {
                 setRemaining(chunk.remaining)
+              } else if (chunk.type === 'context' && typeof chunk.marketCount === 'number') {
+                setMarketCount(chunk.marketCount)
               }
             } catch {
               // ignore unparseable lines
@@ -215,7 +218,10 @@ export default function AskPage() {
           Ask about Polymarket
         </h1>
         <p className="text-sm text-muted-foreground mt-1 text-pretty">
-          Query all active markets by clarity score, risk level, topic, or volume. Powered by DeepSeek.
+          Query active markets by clarity score, risk level, topic, or volume. Powered by DeepSeek.
+          {marketCount !== null && (
+            <span className="ml-1 text-primary">{marketCount.toLocaleString()} markets loaded.</span>
+          )}
         </p>
       </div>
 

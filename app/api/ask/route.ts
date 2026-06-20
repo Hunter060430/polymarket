@@ -40,29 +40,36 @@ export async function POST(req: Request) {
     return Response.json({ error: 'AI service not configured.' }, { status: 500 })
   }
 
-  // Fetch market data
-  let marketContext = '(market data unavailable)'
+  // Fetch market data — errors are surfaced to the client via the stream
+  let markets: Awaited<ReturnType<typeof fetchAllActivePolymarketMarkets>> = []
+  let fetchError: string | null = null
   try {
-    const markets = await fetchAllActivePolymarketMarkets()
-    marketContext = markets
-      .slice(0, 250)
-      .map(
-        (m, i) =>
-          `${i + 1}. [Score:${m.score?.totalScore ?? '?'}/Risk:${m.score?.riskLevel ?? '?'}] ${m.question} (Volume:$${Number(m.volume ?? 0).toLocaleString()}, Ends:${m.endDate ?? 'N/A'})`,
-      )
-      .join('\n')
-  } catch { /* use fallback */ }
+    markets = await fetchAllActivePolymarketMarkets()
+  } catch (err) {
+    fetchError = err instanceof Error ? err.message : 'Unknown error'
+    console.error('[ask] market fetch failed:', fetchError)
+  }
+
+  const marketCount = markets.length
+  const marketContext = marketCount > 0
+    ? markets
+        .map(
+          (m, i) =>
+            `${i + 1}. [Score:${m.score?.totalScore ?? '?'}/Risk:${m.score?.riskLevel ?? '?'}] ${m.question} (Volume:$${Number(m.volume ?? 0).toLocaleString()}, Ends:${m.endDate ?? 'N/A'})`,
+        )
+        .join('\n')
+    : '(no market data available)'
 
   const systemPrompt = `You are Verdict AI, an expert analyst of Polymarket prediction markets.
-You have real-time data on active markets scored by the Verdict clarity system.
+You have real-time access to ${marketCount} active markets scored by the Verdict clarity system.
 
 Scoring: 0-30 = Critical risk, 30-50 = High risk, 50-70 = Medium risk, 70-100 = Low risk.
 Higher score = clearer resolution rules = less dispute risk.
 
-ACTIVE MARKETS:
+ACTIVE MARKETS (${marketCount} total):
 ${marketContext}
 
-Rules: Always respond in English. Be concise and analytical. Reference specific markets with their scores when relevant.`
+Rules: Always respond in English. Be concise and analytical. Reference specific markets with their scores when relevant. If asked to list markets, show score and risk level.`
 
   // Call DeepSeek streaming directly
   const dsRes = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -97,8 +104,9 @@ Rules: Always respond in English. Be concise and analytical. Reference specific 
       const decoder = new TextDecoder()
       let buf = ''
 
-      // First event: how many questions remain today
+      // First events: remaining quota + how many markets were loaded
       controller.enqueue(encoder.encode(sse({ type: 'remaining', remaining })))
+      controller.enqueue(encoder.encode(sse({ type: 'context', marketCount, fetchError })))
 
       try {
         while (true) {
