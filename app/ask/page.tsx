@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, RotateCcw, Sparkles } from 'lucide-react'
+import { Send, RotateCcw, Sparkles, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 
 // ── Math captcha ──────────────────────────────────────────────────────────────
 function generateCaptcha() {
@@ -209,7 +210,14 @@ export default function AskPage() {
     <main className="flex flex-col h-[calc(100vh-3.5rem)] max-w-3xl mx-auto px-4 sm:px-6">
 
       {/* Header */}
-      <div className="pt-8 pb-4 shrink-0">
+      <div className="pt-6 pb-4 shrink-0">
+        <Link
+          href="/markets"
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-4"
+        >
+          <ArrowLeft className="size-3.5" />
+          Back to Markets
+        </Link>
         <div className="flex items-center gap-2 mb-1">
           <Sparkles className="size-4 text-primary shrink-0" />
           <p className="text-xs tracking-[0.14em] uppercase text-primary">Verdict AI</p>
