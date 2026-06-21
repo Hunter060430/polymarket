@@ -160,7 +160,7 @@ export default async function MarketDetailPage({
             <div className="flex items-center gap-3">
               <StarButton marketId={market.marketId} />
               <EmbedButton marketId={market.marketId} />
-              <ShareButton question={market.question} />
+              <ShareButton question={market.question} score={score.totalScore} riskLevel={score.riskLevel} />
             </div>
           </div>
         </div>
