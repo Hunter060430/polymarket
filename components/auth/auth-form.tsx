@@ -2,11 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { authClient, signIn, signUp } from '@/lib/auth-client'
-import { Loader2, Mail, Wallet } from 'lucide-react'
-
-type Mode = 'sign-in' | 'sign-up'
+import { signIn } from '@/lib/auth-client'
+import { Loader2, Wallet } from 'lucide-react'
 
 function GoogleIcon() {
   return (
@@ -19,55 +16,41 @@ function GoogleIcon() {
   )
 }
 
-export function AuthForm({ mode }: { mode: Mode }) {
+export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const router = useRouter()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState<null | 'email' | 'google' | 'wallet'>(null)
+  const [loading, setLoading] = useState<null | 'google' | 'wallet'>(null)
 
-  const isSignUp = mode === 'sign-up'
-
-  async function handleEmail(e: React.FormEvent) {
-    e.preventDefault()
-    setError(null)
-    setLoading('email')
-    try {
-      if (isSignUp) {
-        const { error } = await signUp.email({ email, password, name: name || email.split('@')[0] })
-        if (error) throw new Error(error.message)
-      } else {
-        const { error } = await signIn.email({ email, password })
-        if (error) throw new Error(error.message)
-      }
-      router.push('/')
-      router.refresh()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.')
-      setLoading(null)
-    }
-  }
-
+  // ── Google ──────────────────────────────────────────────────────────────
   async function handleGoogle() {
     setError(null)
     setLoading('google')
     try {
       await signIn.social({ provider: 'google', callbackURL: '/' })
+      // Google redirects away; loading spinner stays until redirect.
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Google sign-in failed.')
       setLoading(null)
     }
   }
 
+  // ── Wallet (SIWE) ───────────────────────────────────────────────────────
   async function handleWallet() {
     setError(null)
     setLoading('wallet')
     try {
-      const eth = (window as unknown as { ethereum?: { request: (a: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum
+      const eth = (
+        window as unknown as {
+          ethereum?: {
+            request: (a: { method: string; params?: unknown[] }) => Promise<unknown>
+          }
+        }
+      ).ethereum
       if (!eth) {
-        throw new Error('No Ethereum wallet found. Install MetaMask or a compatible wallet.')
+        throw new Error('No Ethereum wallet detected. Please install MetaMask or a compatible wallet extension.')
       }
+
+      // 1. Request wallet access
       const accounts = (await eth.request({ method: 'eth_requestAccounts' })) as string[]
       const address = accounts[0]
       if (!address) throw new Error('No wallet account selected.')
@@ -75,34 +58,55 @@ export function AuthForm({ mode }: { mode: Mode }) {
       const chainIdHex = (await eth.request({ method: 'eth_chainId' })) as string
       const chainId = parseInt(chainIdHex, 16)
 
-      // 1. Get nonce from server
-      const { data: nonceData, error: nonceErr } = await authClient.siwe.nonce({
-        walletAddress: address,
-        chainId,
+      // 2. Get nonce — POST to Better Auth's SIWE endpoint directly
+      const nonceRes = await fetch('/api/auth/siwe/nonce', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address, chainId }),
       })
-      if (nonceErr || !nonceData) throw new Error(nonceErr?.message || 'Could not get nonce.')
+      if (!nonceRes.ok) {
+        const text = await nonceRes.text()
+        throw new Error(`Could not get nonce: ${text}`)
+      }
+      const { nonce } = (await nonceRes.json()) as { nonce: string }
 
-      // 2. Build SIWE message
+      // 3. Build EIP-4361 SIWE message
       const domain = window.location.host
       const uri = window.location.origin
       const issuedAt = new Date().toISOString()
-      const message = `${domain} wants you to sign in with your Ethereum account:\n${address}\n\nSign in to Verdict.\n\nURI: ${uri}\nVersion: 1\nChain ID: ${chainId}\nNonce: ${nonceData.nonce}\nIssued At: ${issuedAt}`
+      const message =
+        `${domain} wants you to sign in with your Ethereum account:\n` +
+        `${address}\n\n` +
+        `Sign in to Verdict.\n\n` +
+        `URI: ${uri}\n` +
+        `Version: 1\n` +
+        `Chain ID: ${chainId}\n` +
+        `Nonce: ${nonce}\n` +
+        `Issued At: ${issuedAt}`
 
-      // 3. Sign
+      // 4. Request signature from wallet
       const signature = (await eth.request({
         method: 'personal_sign',
         params: [message, address],
       })) as string
 
-      // 4. Verify with server
-      const { error: verifyErr } = await authClient.siwe.verify({
-        message,
-        signature,
-        walletAddress: address,
-        chainId,
+      // 5. Verify on server — this creates/logs in the user and sets the session cookie
+      const verifyRes = await fetch('/api/auth/siwe/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ message, signature, walletAddress: address, chainId }),
       })
-      if (verifyErr) throw new Error(verifyErr.message || 'Signature verification failed.')
+      if (!verifyRes.ok) {
+        const text = await verifyRes.text()
+        throw new Error(`Verification failed: ${text}`)
+      }
+      const result = (await verifyRes.json()) as { success?: boolean; error?: string }
+      if (!result.success) {
+        throw new Error(result.error ?? 'Signature rejected by server.')
+      }
 
+      // 6. Success — navigate home and refresh RSC cache to pick up new session
       router.push('/')
       router.refresh()
     } catch (err) {
@@ -114,89 +118,52 @@ export function AuthForm({ mode }: { mode: Mode }) {
   return (
     <div className="w-full max-w-sm mx-auto">
       <h1 className="font-heading text-3xl font-light text-foreground mb-1">
-        {isSignUp ? 'Create account' : 'Welcome back'}
+        Welcome to Verdict
       </h1>
       <p className="text-sm text-muted-foreground mb-8">
-        {isSignUp ? 'Join the Verdict community.' : 'Sign in to comment and vote.'}
+        Sign in to comment, vote, and track markets.
       </p>
 
-      {/* OAuth + wallet */}
-      <div className="flex flex-col gap-2.5 mb-6">
+      <div className="flex flex-col gap-3">
         <button
           onClick={handleGoogle}
           disabled={loading !== null}
           className="inline-flex items-center justify-center gap-2.5 border border-border px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors disabled:opacity-50"
         >
-          {loading === 'google' ? <Loader2 className="size-4 animate-spin" /> : <GoogleIcon />}
+          {loading === 'google' ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <GoogleIcon />
+          )}
           Continue with Google
         </button>
+
         <button
           onClick={handleWallet}
           disabled={loading !== null}
           className="inline-flex items-center justify-center gap-2.5 border border-border px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors disabled:opacity-50"
         >
-          {loading === 'wallet' ? <Loader2 className="size-4 animate-spin" /> : <Wallet className="size-4" aria-hidden="true" />}
+          {loading === 'wallet' ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Wallet className="size-4" aria-hidden="true" />
+          )}
           Continue with Wallet
         </button>
       </div>
 
-      <div className="flex items-center gap-3 mb-6">
-        <div className="h-px flex-1 bg-border" />
-        <span className="text-xs uppercase tracking-wider text-muted-foreground">or</span>
-        <div className="h-px flex-1 bg-border" />
-      </div>
+      {error && (
+        <p className="text-xs text-destructive border-l-2 border-destructive pl-3 py-1 mt-4">
+          {error}
+        </p>
+      )}
 
-      {/* Email + password */}
-      <form onSubmit={handleEmail} className="flex flex-col gap-3">
-        {isSignUp && (
-          <input
-            type="text"
-            placeholder="Display name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="border border-border bg-background px-3 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground transition-colors"
-          />
-        )}
-        <input
-          type="email"
-          required
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="border border-border bg-background px-3 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground transition-colors"
-        />
-        <input
-          type="password"
-          required
-          minLength={8}
-          placeholder="Password (min 8 chars)"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="border border-border bg-background px-3 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground transition-colors"
-        />
-
-        {error && (
-          <p className="text-xs text-destructive border-l-2 border-destructive pl-3 py-1">{error}</p>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading !== null}
-          className="inline-flex items-center justify-center gap-2 bg-foreground text-background px-4 py-3 text-xs tracking-[0.12em] uppercase font-medium hover:bg-primary transition-colors disabled:opacity-50 mt-1"
-        >
-          {loading === 'email' ? <Loader2 className="size-4 animate-spin" /> : <Mail className="size-3.5" aria-hidden="true" />}
-          {isSignUp ? 'Sign Up' : 'Sign In'}
-        </button>
-      </form>
-
-      <p className="text-sm text-muted-foreground mt-6 text-center">
-        {isSignUp ? 'Already have an account?' : 'New to Verdict?'}{' '}
-        <Link
-          href={isSignUp ? '/sign-in' : '/sign-up'}
-          className="text-primary hover:underline underline-offset-4"
-        >
-          {isSignUp ? 'Sign in' : 'Create one'}
-        </Link>
+      <p className="text-xs text-muted-foreground mt-6 text-center leading-relaxed">
+        By signing in you agree to our{' '}
+        <a href="/terms" className="underline underline-offset-4 hover:text-foreground">
+          Terms of Service
+        </a>
+        .
       </p>
     </div>
   )
