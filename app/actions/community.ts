@@ -17,6 +17,20 @@ async function requireUserId(): Promise<string> {
   return session.user.id
 }
 
+// Key-free bot protection for free-text submissions.
+//  - honeypot: a hidden field humans never see; bots auto-fill it.
+//  - elapsedMs: time between form render and submit; humans take >1.5s.
+const MIN_FILL_MS = 1500
+
+export type BotCheck = { honeypot?: string; elapsedMs?: number }
+
+function looksLikeBot(check?: BotCheck): boolean {
+  if (!check) return false
+  if (check.honeypot && check.honeypot.trim() !== '') return true
+  if (typeof check.elapsedMs === 'number' && check.elapsedMs < MIN_FILL_MS) return true
+  return false
+}
+
 export type CommentWithAuthor = {
   id: number
   marketId: string
@@ -79,12 +93,18 @@ const MAX_COMMENTS_PER_WINDOW = 3
 export async function postComment(
   marketId: string,
   body: string,
+  botCheck?: BotCheck,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   let userId: string
   try {
     userId = await requireUserId()
   } catch {
     return { ok: false, error: 'You must be signed in to comment.' }
+  }
+
+  // Silent bot rejection — return a generic error without revealing the trap.
+  if (looksLikeBot(botCheck)) {
+    return { ok: false, error: 'Something went wrong. Please try again.' }
   }
 
   const trimmed = body.trim()
