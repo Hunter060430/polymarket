@@ -34,6 +34,7 @@ export interface PolymarketEvent {
   title?: string
   slug?: string
   category?: string
+  tags?: Array<{ label?: string; slug?: string } | string>
   markets?: PolymarketMarket[]
   active?: boolean
   closed?: boolean

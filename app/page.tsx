@@ -3,6 +3,8 @@ import { Nav, PageFooter } from '@/components/nav'
 import { ArrowRight, Shield, Clock, BookOpen, BarChart2, AlertTriangle, FileCheck } from 'lucide-react'
 import type { Metadata } from 'next'
 import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'
+import { TrendingRiskMarkets } from '@/components/home/trending-risk-markets'
+import { BrowseCategories } from '@/components/home/browse-categories'
 
 export const metadata: Metadata = {
   // Use layout.tsx default title — avoids "Verdict — Verdict" from the template
@@ -188,6 +190,12 @@ export default async function LandingPage() {
             </div>
           </div>
         </section>
+
+        {/* ── TRENDING RISK MARKETS ────────────────────────────── */}
+        <TrendingRiskMarkets />
+
+        {/* ── BROWSE BY CATEGORY ───────────────────────────────── */}
+        <BrowseCategories />
 
         {/* ── SIX DIMENSIONS ───────────────────────────────────── */}
         <section className="border-b border-border">

@@ -8,6 +8,7 @@ import { Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { CommandMenu } from '@/components/command-menu'
+import { UserMenu } from '@/components/auth/user-menu'
 
 const NAV_LINKS = [
   { href: '/dashboard',        label: 'Dashboard'      },
@@ -100,6 +101,9 @@ export function Nav() {
 
           {/* Theme toggle */}
           <ThemeToggle />
+
+          {/* Account */}
+          <UserMenu />
 
           {/* X / Twitter */}
           <a

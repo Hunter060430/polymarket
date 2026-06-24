@@ -10,6 +10,9 @@ import { EmbedButton } from '@/components/markets/embed-button'
 import { ExternalLink, Calendar, DollarSign, Droplets, FileText, ArrowLeft, ArrowRight, TrendingUp, TrendingDown } from 'lucide-react'
 import { fetchAllActivePolymarketMarkets, fetchMarketById } from '@/lib/polymarket'
 import { formatVolume, polymarketUrl, formatPriceChange } from '@/lib/utils'
+import { CommunityRiskVote } from '@/components/markets/community-risk-vote'
+import { MarketDiscussion } from '@/components/markets/market-discussion'
+import { getComments, getRiskTally } from '@/app/actions/community'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import type { NormalizedMarket } from '@/lib/types'
@@ -112,6 +115,12 @@ export default async function MarketDetailPage({
   // Single awaited call — market + related derived from one cache read.
   const { market, related } = await getMarketAndRelated(id)
   if (!market) notFound()
+
+  // Community data — keyed by the canonical market id used in the URL
+  const [comments, riskTally] = await Promise.all([
+    getComments(market.marketId),
+    getRiskTally(market.marketId),
+  ])
 
   const { score } = market
   const priceChange = formatPriceChange(market.oneDayPriceChange)
@@ -328,6 +337,16 @@ export default async function MarketDetailPage({
             </a>
           </div>
         )}
+
+        {/* ── Community Risk Vote ────────────────────────── */}
+        <section className="border-b border-border pb-8 sm:pb-10 mb-8 sm:mb-10">
+          <CommunityRiskVote marketId={market.marketId} initialTally={riskTally} />
+        </section>
+
+        {/* ── Discussion ─────────────────────────────────── */}
+        <section className="border-b border-border pb-8 sm:pb-10 mb-8 sm:mb-10">
+          <MarketDiscussion marketId={market.marketId} initialComments={comments} />
+        </section>
 
         {/* ── Related Markets ───────────────────────────── */}
         {related.length > 0 && (

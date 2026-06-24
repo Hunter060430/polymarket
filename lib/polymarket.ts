@@ -103,11 +103,42 @@ function parseNumber(val: string | number | undefined | null): number {
   return isNaN(n) ? 0 : n
 }
 
+// Gamma stopped populating `event.category`; the topic now lives in `tags`.
+// Map the tag set to one clean top-level category for browsing/filtering.
+// Order matters — the first rule that matches wins.
+const CATEGORY_RULES: { category: string; match: RegExp }[] = [
+  { category: 'Politics', match: /politic|election|president|congress|senate|geopolitic|government/i },
+  { category: 'Crypto', match: /crypto|bitcoin|ethereum|solana|\bbtc\b|\beth\b|defi|token/i },
+  { category: 'Sports', match: /sport|soccer|football|basketball|nba|nfl|mlb|baseball|tennis|hockey|nhl|ufc|boxing|golf|cricket|fifa|world cup|olympic|tournament/i },
+  { category: 'Business', match: /business|econom|fed|inflation|interest rate|stock|earnings|company|market cap|ipo|recession/i },
+  { category: 'Tech & Science', match: /\bai\b|tech|science|space|nasa|spacex|climate|weather/i },
+  { category: 'Pop Culture', match: /entertain|celebrit|movie|music|tv|culture|award|oscar|grammy/i },
+  { category: 'World', match: /world|global|international|war|ukraine|israel|middle east/i },
+]
+
+function deriveCategory(event: PolymarketEvent): string {
+  if (event.category && event.category.trim()) return event.category.trim()
+
+  const labels = (event.tags ?? [])
+    .map((t) => (typeof t === 'string' ? t : t.label || t.slug || ''))
+    .filter(Boolean)
+
+  if (labels.length === 0) return 'Other'
+
+  const haystack = labels.join(' ')
+  for (const { category, match } of CATEGORY_RULES) {
+    if (match.test(haystack)) return category
+  }
+  return 'Other'
+}
+
 export function normalizePolymarketMarkets(events: PolymarketEvent[]): NormalizedMarket[] {
   const markets: NormalizedMarket[] = []
 
   for (const event of events) {
     if (!event.markets || !Array.isArray(event.markets)) continue
+
+    const eventCategory = deriveCategory(event)
 
     for (const market of event.markets) {
       const question = market.question ?? ''
@@ -152,7 +183,7 @@ export function normalizePolymarketMarkets(events: PolymarketEvent[]): Normalize
         eventId: event.id ?? '',
         eventTitle: event.title ?? '',
         eventSlug: event.slug ?? '',
-        eventCategory: event.category ?? '',
+        eventCategory,
         marketId: market.id ?? '',
         marketSlug: market.slug ?? '',
         question,
