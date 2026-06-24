@@ -4,7 +4,7 @@ import {
   timestamp,
   boolean,
   integer,
-  uuid,
+  serial,
   unique,
   index,
 } from 'drizzle-orm/pg-core'
@@ -77,53 +77,50 @@ export const walletAddress = pgTable('walletAddress', {
 })
 
 // --- Verdict community app tables ------------------------------------------
-// App tables use uuid PKs and a plain `userId` column for per-user scoping.
+// marketId is the Polymarket market id/slug (text). userId scopes ownership.
 
-export const marketCategories = pgTable('market_categories', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  name: text('name').notNull(),
-  slug: text('slug').notNull().unique(),
-})
-
-export const markets = pgTable('markets', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  polymarketId: text('polymarket_id'),
-  title: text('title').notNull(),
-  slug: text('slug').notNull().unique(),
-  categoryId: uuid('category_id'),
-  url: text('url'),
-  riskScore: integer('risk_score'),
-  riskLevel: text('risk_level'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-})
-
-export const marketComments = pgTable(
-  'market_comments',
+export const marketComment = pgTable(
+  'market_comment',
   {
-    id: uuid('id').primaryKey().defaultRandom(),
-    marketId: uuid('market_id').notNull(),
-    userId: text('user_id').notNull(),
+    id: serial('id').primaryKey(),
+    marketId: text('marketId').notNull(),
+    userId: text('userId').notNull(),
     body: text('body').notNull(),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    parentId: integer('parentId'),
+    upvotes: integer('upvotes').notNull().default(0),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
   },
   (t) => ({
-    marketIdx: index('comments_market_idx').on(t.marketId),
+    marketIdx: index('idx_comment_market').on(t.marketId, t.createdAt),
   }),
 )
 
-export const marketRiskVotes = pgTable(
-  'market_risk_votes',
+export const commentVote = pgTable(
+  'comment_vote',
   {
-    id: uuid('id').primaryKey().defaultRandom(),
-    marketId: uuid('market_id').notNull(),
-    userId: text('user_id').notNull(),
-    vote: text('vote').notNull(), // 'low' | 'medium' | 'high' | 'critical'
-    createdAt: timestamp('created_at').notNull().defaultNow(),
+    id: serial('id').primaryKey(),
+    commentId: integer('commentId').notNull(),
+    userId: text('userId').notNull(),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
   },
   (t) => ({
-    marketUserUnique: unique('votes_market_user_unique').on(t.marketId, t.userId),
-    marketIdx: index('votes_market_idx').on(t.marketId),
+    commentUserUnique: unique().on(t.commentId, t.userId),
+  }),
+)
+
+export const riskVote = pgTable(
+  'risk_vote',
+  {
+    id: serial('id').primaryKey(),
+    marketId: text('marketId').notNull(),
+    userId: text('userId').notNull(),
+    vote: text('vote').notNull(), // 'low' | 'medium' | 'high' | 'critical'
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  },
+  (t) => ({
+    marketUserUnique: unique().on(t.marketId, t.userId),
+    marketIdx: index('idx_riskvote_market').on(t.marketId),
   }),
 )
