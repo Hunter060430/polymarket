@@ -63,6 +63,10 @@ export const auth = betterAuth({
     ...(process.env.VERCEL_PROJECT_PRODUCTION_URL
       ? [`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`]
       : []),
+    // v0 preview iframes and Vercel preview deployments use dynamic subdomains;
+    // wildcard them so auth works across every preview origin.
+    'https://*.vusercontent.net',
+    'https://*.vercel.app',
   ],
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 days

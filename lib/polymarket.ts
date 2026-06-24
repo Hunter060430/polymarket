@@ -138,6 +138,8 @@ export function normalizePolymarketMarkets(events: PolymarketEvent[]): Normalize
   for (const event of events) {
     if (!event.markets || !Array.isArray(event.markets)) continue
 
+    const eventCategory = deriveCategory(event)
+
     for (const market of event.markets) {
       const question = market.question ?? ''
       const description = market.description ?? ''
@@ -181,7 +183,7 @@ export function normalizePolymarketMarkets(events: PolymarketEvent[]): Normalize
         eventId: event.id ?? '',
         eventTitle: event.title ?? '',
         eventSlug: event.slug ?? '',
-        eventCategory: event.category ?? '',
+        eventCategory,
         marketId: market.id ?? '',
         marketSlug: market.slug ?? '',
         question,
