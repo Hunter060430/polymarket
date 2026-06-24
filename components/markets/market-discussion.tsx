@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useOptimistic } from 'react'
+import { useState, useTransition, useRef } from 'react'
 import Link from 'next/link'
 import { useSession } from '@/lib/auth-client'
 import {
@@ -36,6 +36,10 @@ export function MarketDiscussion({
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
+  // Bot protection: hidden honeypot + time-to-submit. Neither is visible to users.
+  const [honeypot, setHoneypot] = useState('')
+  const composerMountedAt = useRef(Date.now())
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -44,13 +48,15 @@ export function MarketDiscussion({
       setError('Comment is too short.')
       return
     }
+    const elapsedMs = Date.now() - composerMountedAt.current
     startTransition(async () => {
-      const res = await postComment(marketId, trimmed)
+      const res = await postComment(marketId, trimmed, { honeypot, elapsedMs })
       if (!res.ok) {
         setError(res.error)
         return
       }
       setBody('')
+      setHoneypot('')
       // Optimistically prepend
       setComments((prev) => [
         {
@@ -99,6 +105,18 @@ export function MarketDiscussion({
       {/* Composer */}
       {session?.user ? (
         <form onSubmit={submit} className="mb-8">
+          {/* Honeypot — hidden from humans, bots tend to fill it. Do not remove. */}
+          <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
+            <label htmlFor="website-url-hp">Leave this field empty</label>
+            <input
+              id="website-url-hp"
+              type="text"
+              tabIndex={-1}
+              autoComplete="off"
+              value={honeypot}
+              onChange={(e) => setHoneypot(e.target.value)}
+            />
+          </div>
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}

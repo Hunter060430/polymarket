@@ -32,9 +32,22 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
   // keystroke. Only the "shareable" params (sort, risk) live in the URL.
   const [query,      setQuery]      = useState('')
   const [riskFilter, setRiskFilter] = useState(() => searchParams.get('risk') ?? 'all')
+  const [category,   setCategory]   = useState(() => searchParams.get('category') ?? 'all')
   const [minVolume,  setMinVolume]  = useState(() => searchParams.get('minvol') ?? '0')
   const [sortBy,     setSortBy]     = useState(() => searchParams.get('sort') ?? 'score-asc')
   const [page,       setPageState]  = useState(1)
+
+  // Unique categories present in the data, sorted by market count (desc)
+  const categories = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const m of markets) {
+      const c = m.eventCategory?.trim()
+      if (c) counts.set(c, (counts.get(c) ?? 0) + 1)
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([name]) => name)
+  }, [markets])
 
   // Sync shareable params to URL without causing a server round-trip
   const syncUrl = useCallback((updates: Record<string, string>) => {
@@ -56,6 +69,12 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
     syncUrl({ risk: v })
   }, [syncUrl])
 
+  const handleCategoryChange = useCallback((v: string) => {
+    setCategory(v)
+    setPageState(1)
+    syncUrl({ category: v })
+  }, [syncUrl])
+
   const handleMinvolChange = useCallback((v: string) => {
     setMinVolume(v)
     setPageState(1)
@@ -71,6 +90,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
   const clearFilters = useCallback(() => {
     setQuery('')
     setRiskFilter('all')
+    setCategory('all')
     setMinVolume('0')
     setSortBy('score-asc')
     setPageState(1)
@@ -97,6 +117,10 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
       result = result.filter((m) => m.score.riskLevel === riskFilter)
     }
 
+    if (category !== 'all') {
+      result = result.filter((m) => m.eventCategory === category)
+    }
+
     const minvol = parseFloat(minVolume) || 0
     if (minvol > 0) {
       result = result.filter((m) => m.volume >= minvol)
@@ -117,7 +141,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
         default:     return 0
       }
     })
-  }, [markets, query, riskFilter, minVolume, sortBy, watchlist])
+  }, [markets, query, riskFilter, category, minVolume, sortBy, watchlist])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage   = Math.min(page, totalPages)
@@ -165,6 +189,20 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
               <SelectItem value="Low">Low</SelectItem>
             </SelectContent>
           </Select>
+
+          {categories.length > 0 && (
+            <Select value={category} onValueChange={(v) => v && handleCategoryChange(v)}>
+              <SelectTrigger className="w-[calc(50%-4px)] sm:w-36 text-xs h-8 bg-background border-border" aria-label="Category filter">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All categories</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           <Select value={minVolume} onValueChange={(v) => v && handleMinvolChange(v)}>
             <SelectTrigger className="w-[calc(50%-4px)] sm:w-32 text-xs h-8 bg-background border-border" aria-label="Minimum volume">

@@ -1,7 +1,9 @@
 'use client'
 
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { RiskBadge } from '@/components/risk-badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ArrowRight } from 'lucide-react'
 import { formatVolume, formatDate, cn } from '@/lib/utils'
 import type { NormalizedMarket } from '@/lib/types'
@@ -11,6 +13,24 @@ interface MarketsTableProps {
 }
 
 export function MarketsTable({ markets }: MarketsTableProps) {
+  const [category, setCategory] = useState('all')
+
+  const categories = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const m of markets) {
+      const c = m.eventCategory?.trim()
+      if (c) counts.set(c, (counts.get(c) ?? 0) + 1)
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([name]) => name)
+  }, [markets])
+
+  const visible = useMemo(
+    () => (category === 'all' ? markets : markets.filter((m) => m.eventCategory === category)),
+    [markets, category],
+  )
+
   if (markets.length === 0) {
     return (
       <div className="border border-border py-16 text-center">
@@ -20,6 +40,28 @@ export function MarketsTable({ markets }: MarketsTableProps) {
   }
 
   return (
+    <>
+      {/* Category filter toolbar */}
+      {categories.length > 0 && (
+        <div className="border border-border border-b-0 bg-secondary/20 px-4 py-2.5 flex items-center gap-3">
+          <span className="text-xs tracking-[0.1em] uppercase text-muted-foreground">Category</span>
+          <Select value={category} onValueChange={(v) => v && setCategory(v)}>
+            <SelectTrigger className="w-40 text-xs h-8 bg-background border-border" aria-label="Filter by category">
+              <SelectValue placeholder="All categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All categories</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-xs text-muted-foreground tabular-nums ml-auto">
+            {visible.length} {visible.length === 1 ? 'market' : 'markets'}
+          </span>
+        </div>
+      )}
+
     <div className="border border-border overflow-x-auto">
       <table className="w-full text-sm" role="table">
         <thead>
@@ -45,7 +87,7 @@ export function MarketsTable({ markets }: MarketsTableProps) {
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
-          {markets.map((market) => {
+          {visible.map((market) => {
             const isCritical = market.score.riskLevel === 'Critical'
             const isHigh     = market.score.riskLevel === 'High'
             return (
@@ -119,5 +161,6 @@ export function MarketsTable({ markets }: MarketsTableProps) {
         </tbody>
       </table>
     </div>
+    </>
   )
 }
