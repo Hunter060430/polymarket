@@ -243,6 +243,7 @@ export function PageFooter() {
             <p className="text-xs tracking-[0.12em] uppercase text-foreground font-medium">Resources</p>
             <nav className="flex flex-col gap-2.5" aria-label="Resources navigation">
               <Link href="/methodology" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Methodology</Link>
+              <Link href="/whitepaper"  className="text-xs text-muted-foreground hover:text-foreground transition-colors">Whitepaper</Link>
               <Link href="/about"       className="text-xs text-muted-foreground hover:text-foreground transition-colors">About</Link>
               <Link href="/api-docs"    className="text-xs text-muted-foreground hover:text-foreground transition-colors">API Reference</Link>
               <Link href="/pricing"     className="text-xs text-muted-foreground hover:text-foreground transition-colors">Pricing</Link>
