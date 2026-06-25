@@ -32,13 +32,13 @@ export function AccountClient({ data }: { data: AccountData }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
-  // Display name editing
+  // Username editing
   const [editing, setEditing]   = useState(false)
-  const [nameVal, setNameVal]   = useState(data.name)
+  const [nameVal, setNameVal]   = useState(data.username ?? '')
   const [nameErr, setNameErr]   = useState<string | null>(null)
 
   function startEdit() {
-    setNameVal(data.name)
+    setNameVal(data.username ?? '')
     setNameErr(null)
     setEditing(true)
   }
@@ -88,17 +88,23 @@ export function AccountClient({ data }: { data: AccountData }) {
 
         {/* Name + email */}
         <div className="flex-1 min-w-0">
+          {/* Display name (from OAuth / wallet, read-only) */}
+          <h2 className="text-lg font-semibold text-foreground truncate mb-0.5">{data.name}</h2>
+
+          {/* Username (unique, editable) */}
           {editing ? (
             <div className="flex items-center gap-2 mb-1">
+              <span className="text-sm text-muted-foreground">@</span>
               <input
                 autoFocus
                 value={nameVal}
                 onChange={(e) => setNameVal(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') cancelEdit() }}
-                className="text-lg font-semibold bg-transparent border-b border-primary outline-none w-48 text-foreground"
-                maxLength={40}
+                placeholder="username"
+                className="text-sm bg-transparent border-b border-primary outline-none w-40 text-foreground"
+                maxLength={30}
               />
-              <button onClick={saveName} disabled={isPending} aria-label="Save name" className="text-primary hover:opacity-70 transition-opacity">
+              <button onClick={saveName} disabled={isPending} aria-label="Save username" className="text-primary hover:opacity-70 transition-opacity">
                 <Check className="size-4" />
               </button>
               <button onClick={cancelEdit} aria-label="Cancel" className="text-muted-foreground hover:text-foreground transition-colors">
@@ -106,10 +112,12 @@ export function AccountClient({ data }: { data: AccountData }) {
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2 mb-1">
-              <h2 className="text-lg font-semibold text-foreground truncate">{data.name}</h2>
-              <button onClick={startEdit} aria-label="Edit display name" className="text-muted-foreground hover:text-foreground transition-colors">
-                <Pencil className="size-3.5" />
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-sm text-muted-foreground">
+                {data.username ? `@${data.username}` : 'No username set'}
+              </span>
+              <button onClick={startEdit} aria-label="Edit username" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Pencil className="size-3" />
               </button>
             </div>
           )}

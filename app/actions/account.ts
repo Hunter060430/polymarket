@@ -3,7 +3,7 @@
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { user, account, walletAddress, marketComment, riskVote } from '@/lib/db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, ne } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 
@@ -20,6 +20,7 @@ async function requireUserId(): Promise<string> {
 export type AccountData = {
   id: string
   name: string
+  username: string | null
   email: string
   image: string | null
   createdAt: Date
@@ -80,11 +81,25 @@ export async function updateDisplayName(
   } catch {
     return { ok: false, error: 'You must be signed in.' }
   }
-  const trimmed = name.trim()
-  if (!trimmed || trimmed.length < 2) return { ok: false, error: 'Name must be at least 2 characters.' }
-  if (trimmed.length > 40) return { ok: false, error: 'Name must be 40 characters or less.' }
 
-  await db.update(user).set({ name: trimmed, updatedAt: new Date() }).where(eq(user.id, userId))
+  const trimmed = name.trim()
+  if (!trimmed || trimmed.length < 2) return { ok: false, error: 'Username must be at least 2 characters.' }
+  if (trimmed.length > 30) return { ok: false, error: 'Username must be 30 characters or less.' }
+  if (!/^[a-zA-Z0-9_.\-]+$/.test(trimmed))
+    return { ok: false, error: 'Only letters, numbers, underscores, dots, and hyphens allowed.' }
+
+  // Check uniqueness — exclude current user
+  const existing = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(eq(user.username, trimmed))
+    .limit(1)
+
+  if (existing.length > 0 && existing[0].id !== userId) {
+    return { ok: false, error: 'That username is already taken.' }
+  }
+
+  await db.update(user).set({ username: trimmed, updatedAt: new Date() }).where(eq(user.id, userId))
   revalidatePath('/account')
   return { ok: true }
 }
