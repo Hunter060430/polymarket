@@ -59,19 +59,16 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
       const chainId = parseInt(chainIdHex, 16)
 
       // 2. Get nonce
-      console.log('[v0] SIWE: requesting nonce for', address, 'chainId', chainId)
       const nonceRes = await fetch('/api/auth/siwe/nonce', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ walletAddress: address, chainId }),
       })
-      console.log('[v0] SIWE nonce status:', nonceRes.status)
       if (!nonceRes.ok) {
         const text = await nonceRes.text()
         throw new Error(`Could not get nonce (${nonceRes.status}): ${text}`)
       }
       const { nonce } = (await nonceRes.json()) as { nonce: string }
-      console.log('[v0] SIWE nonce received:', nonce)
 
       // 3. Build EIP-4361 SIWE message
       const domain = window.location.host
@@ -88,12 +85,10 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         `Issued At: ${issuedAt}`
 
       // 4. Request signature from wallet
-      console.log('[v0] SIWE: requesting personal_sign')
       const signature = (await eth.request({
         method: 'personal_sign',
         params: [message, address],
       })) as string
-      console.log('[v0] SIWE signature received, verifying...')
 
       // 5. Verify on server
       const verifyRes = await fetch('/api/auth/siwe/verify', {
@@ -102,15 +97,12 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         credentials: 'include',
         body: JSON.stringify({ message, signature, walletAddress: address, chainId }),
       })
-      console.log('[v0] SIWE verify status:', verifyRes.status)
       const verifyText = await verifyRes.text()
-      console.log('[v0] SIWE verify body:', verifyText)
       if (!verifyRes.ok) {
         throw new Error(`Verification failed (${verifyRes.status}): ${verifyText}`)
       }
       let result: { success?: boolean; error?: string; token?: string } = {}
       try { result = JSON.parse(verifyText) } catch { /* non-JSON */ }
-      console.log('[v0] SIWE verify result:', result)
       if (result.success === false) {
         throw new Error(result.error ?? 'Signature rejected by server.')
       }

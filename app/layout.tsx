@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import { Cormorant_Garamond, DM_Sans, Geist_Mono } from 'next/font/google'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ThemeProvider } from '@/components/theme-provider'
+import { CookieConsent } from '@/components/cookie-consent'
 import { SITE_URL } from '@/lib/site'
 import './globals.css'
 
@@ -84,6 +85,7 @@ export default function RootLayout({
           <TooltipProvider>
             {children}
           </TooltipProvider>
+          <CookieConsent />
         </ThemeProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
