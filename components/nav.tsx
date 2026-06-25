@@ -261,7 +261,9 @@ export function PageFooter() {
           <div className="flex flex-col gap-3">
             <p className="text-xs tracking-[0.12em] uppercase text-foreground font-medium">Legal</p>
             <nav className="flex flex-col gap-2.5" aria-label="Legal navigation">
-              <Link href="/disclaimer"     className="text-xs text-muted-foreground hover:text-foreground transition-colors">Disclaimer</Link>
+              <Link href="/privacy"         className="text-xs text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</Link>
+              <Link href="/terms"           className="text-xs text-muted-foreground hover:text-foreground transition-colors">Terms of Service</Link>
+              <Link href="/disclaimer"      className="text-xs text-muted-foreground hover:text-foreground transition-colors">Disclaimer</Link>
               <Link href="/submit-dispute"  className="text-xs text-muted-foreground hover:text-foreground transition-colors">Report a Dispute</Link>
               <p className="text-xs text-muted-foreground leading-relaxed pt-1">
                 Scores are heuristic estimates. Not financial advice.
