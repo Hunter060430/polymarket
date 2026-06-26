@@ -7,11 +7,14 @@ import { OraclePanel } from '@/components/markets/oracle-panel'
 import { ShareButton } from '@/components/markets/share-button'
 import { StarButton } from '@/components/markets/star-button'
 import { EmbedButton } from '@/components/markets/embed-button'
-import { ExternalLink, Calendar, DollarSign, Droplets, FileText, ArrowLeft, ArrowRight, TrendingUp, TrendingDown } from 'lucide-react'
+import { ExternalLink, Calendar, DollarSign, Droplets, FileText, ArrowLeft, TrendingUp, TrendingDown } from 'lucide-react'
 import { fetchAllActivePolymarketMarkets, fetchMarketById } from '@/lib/polymarket'
 import { formatVolume, polymarketUrl, formatPriceChange } from '@/lib/utils'
 import { CommunityRiskVote } from '@/components/markets/community-risk-vote'
 import { MarketDiscussion } from '@/components/markets/market-discussion'
+import { AiAnalysisPanel } from '@/components/markets/ai-analysis-panel'
+import { SimilarMarkets } from '@/components/markets/similar-markets'
+import { findSimilarMarkets } from '@/lib/similarity'
 import { getComments, getRiskTally } from '@/app/actions/community'
 import Link from 'next/link'
 import type { Metadata } from 'next'
@@ -121,6 +124,9 @@ export default async function MarketDetailPage({
     getComments(market.marketId),
     getRiskTally(market.marketId),
   ])
+
+  // Keyword-based similarity (runs in-process, no vector DB needed)
+  const similarItems = findSimilarMarkets(market, related, 5)
 
   const { score } = market
   const priceChange = formatPriceChange(market.oneDayPriceChange)
@@ -323,7 +329,7 @@ export default async function MarketDetailPage({
           </div>
         </section>
 
-        {/* ── External link ─────────────────────────────── */}
+        {/* ── External link ───────────────────────��─────── */}
         {market.marketSlug && (
           <div className="border-b border-border pb-8 sm:pb-10 mb-8 sm:mb-10">
             <a
@@ -338,6 +344,11 @@ export default async function MarketDetailPage({
           </div>
         )}
 
+        {/* ── AI Semantic Analysis ───────────────────────── */}
+        <section className="border-b border-border pb-8 sm:pb-10 mb-8 sm:mb-10">
+          <AiAnalysisPanel market={market} />
+        </section>
+
         {/* ── Community Risk Vote ────────────────────────── */}
         <section className="border-b border-border pb-8 sm:pb-10 mb-8 sm:mb-10">
           <CommunityRiskVote marketId={market.marketId} initialTally={riskTally} />
@@ -348,49 +359,10 @@ export default async function MarketDetailPage({
           <MarketDiscussion marketId={market.marketId} initialComments={comments} />
         </section>
 
-        {/* ── Related Markets ───────────────────────────── */}
-        {related.length > 0 && (
-          <section className="border-b border-border pb-8 sm:pb-10 mb-8 sm:mb-10">
-            <h2 className="font-heading text-2xl font-light text-foreground mb-1">Related Markets</h2>
-            <p className="text-xs tracking-wide text-muted-foreground mb-6 uppercase">
-              Same category or risk level
-            </p>
-            <div className="flex flex-col border border-border border-b-0">
-              {related.map((rel) => {
-                const relColor =
-                  rel.score.riskLevel === 'Low'      ? 'var(--risk-low)'      :
-                  rel.score.riskLevel === 'Medium'   ? 'var(--risk-medium)'   :
-                  rel.score.riskLevel === 'High'     ? 'var(--risk-high)'     :
-                  'var(--risk-critical)'
-                return (
-                  <Link
-                    key={rel.marketId}
-                    href={`/markets/${rel.marketId}`}
-                    className="flex items-center gap-4 px-4 py-3.5 border-b border-border hover:bg-secondary/25 transition-colors group"
-                  >
-                    <span
-                      className="font-heading text-2xl font-light tabular-nums shrink-0 w-8 text-center"
-                      style={{ color: relColor }}
-                    >
-                      {rel.score.totalScore}
-                    </span>
-                    <div className="w-px self-stretch bg-border shrink-0" aria-hidden="true" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-foreground line-clamp-1 group-hover:text-primary transition-colors">{rel.question}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <RiskBadge level={rel.score.riskLevel} />
-                        {rel.eventCategory && (
-                          <span className="text-xs text-muted-foreground hidden sm:inline">{rel.eventCategory}</span>
-                        )}
-                      </div>
-                    </div>
-                    <ArrowRight className="size-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" aria-hidden="true" />
-                  </Link>
-                )
-              })}
-            </div>
-          </section>
-        )}
+        {/* ── Similar Markets ───────────────────────────── */}
+        <section className="border-b border-border pb-8 sm:pb-10 mb-8 sm:mb-10">
+          <SimilarMarkets items={similarItems} />
+        </section>
 
       </main>
       <PageFooter />

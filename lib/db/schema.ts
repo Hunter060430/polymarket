@@ -124,3 +124,32 @@ export const riskVote = pgTable(
     marketIdx: index('idx_riskvote_market').on(t.marketId),
   }),
 )
+
+// Records the actual resolution outcome for closed markets, used for
+// back-testing whether the algorithmic risk score predicted disputes correctly.
+export const marketResolution = pgTable('market_resolution', {
+  id: text('id').primaryKey(),
+  marketId: text('market_id').notNull().unique(),
+  marketSlug: text('market_slug'),
+  question: text('question'),
+  resolvedAt: timestamp('resolved_at'),
+  resolution: text('resolution'), // 'yes' | 'no' | 'n/a' | 'disputed' | 'cancelled'
+  wasDisputed: boolean('was_disputed').notNull().default(false),
+  disputeNotes: text('dispute_notes'),
+  riskLevelAtClose: text('risk_level_at_close'),
+  scoreAtClose: integer('score_at_close'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+})
+
+// Tracks community reputation accumulated through comments, votes, and
+// accurate risk predictions. Badge thresholds: Observer 0–9, Contributor 10–49, Expert 50+.
+export const userReputation = pgTable('user_reputation', {
+  userId: text('user_id').primaryKey(),
+  commentCount: integer('comment_count').notNull().default(0),
+  voteCount: integer('vote_count').notNull().default(0),
+  helpfulVotes: integer('helpful_votes').notNull().default(0),
+  score: integer('score').notNull().default(0),
+  badge: text('badge').notNull().default('Observer'), // 'Observer' | 'Contributor' | 'Expert'
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+})

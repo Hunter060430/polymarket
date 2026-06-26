@@ -4,11 +4,12 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, User, Star, LogIn } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { CommandMenu } from '@/components/command-menu'
 import { UserMenu } from '@/components/auth/user-menu'
+import { useSession } from '@/lib/auth-client'
 
 const NAV_LINKS = [
   { href: '/dashboard',        label: 'Dashboard'      },
@@ -25,6 +26,7 @@ export function Nav() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const hamburgerRef = useRef<HTMLButtonElement>(null)
+  const { data: session } = useSession()
 
   // Close on Escape; lock body scroll when open
   useEffect(() => {
@@ -163,6 +165,49 @@ export function Nav() {
               </Link>
             )
           })}
+
+          {/* Auth section */}
+          <div className="border-t border-border mt-1">
+            {session?.user ? (
+              <>
+                <Link
+                  href="/account"
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    'flex items-center gap-3 px-6 py-4 text-sm tracking-[0.06em] uppercase border-b border-border transition-colors',
+                    pathname === '/account'
+                      ? 'text-foreground font-medium'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary/30',
+                  )}
+                >
+                  <User className="size-4 shrink-0" aria-hidden="true" />
+                  Account
+                </Link>
+                <Link
+                  href="/watchlist"
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    'flex items-center gap-3 px-6 py-4 text-sm tracking-[0.06em] uppercase border-b border-border transition-colors',
+                    pathname === '/watchlist'
+                      ? 'text-foreground font-medium'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary/30',
+                  )}
+                >
+                  <Star className="size-4 shrink-0" aria-hidden="true" />
+                  Watchlist
+                </Link>
+              </>
+            ) : (
+              <Link
+                href="/sign-in"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 px-6 py-4 text-sm tracking-[0.06em] uppercase border-b border-border text-muted-foreground hover:text-foreground hover:bg-secondary/30 transition-colors"
+              >
+                <LogIn className="size-4 shrink-0" aria-hidden="true" />
+                Sign In
+              </Link>
+            )}
+          </div>
         </nav>
       )}
     </header>

@@ -10,6 +10,7 @@ import {
   type CommentWithAuthor,
 } from '@/app/actions/community'
 import { MessageSquare, ArrowBigUp, Trash2, Loader2 } from 'lucide-react'
+import { ReputationBadge } from '@/components/reputation-badge'
 
 function timeAgo(date: Date): string {
   const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
@@ -58,7 +59,7 @@ export function MarketDiscussion({
       setBody('')
       setHoneypot('')
       // Optimistically prepend
-      setComments((prev) => [
+          setComments((prev) => [
         {
           id: Date.now(),
           marketId,
@@ -68,6 +69,8 @@ export function MarketDiscussion({
           createdAt: new Date(),
           authorName: session!.user.name || null,
           authorImage: session!.user.image || null,
+          authorBadge: 'Observer',
+          authorScore: 0,
           hasVoted: false,
         },
         ...prev,
@@ -186,6 +189,7 @@ export function MarketDiscussion({
                       </span>
                     )}
                     <span className="text-sm font-medium text-foreground">{display}</span>
+                    <ReputationBadge badge={c.authorBadge} score={c.authorScore} />
                     <span className="text-xs text-muted-foreground">· {timeAgo(c.createdAt)}</span>
                     {isOwner && (
                       <button
