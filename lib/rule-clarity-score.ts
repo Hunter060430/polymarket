@@ -8,7 +8,14 @@ const OFFICIAL_SOURCE_WORDS = [
   'official', 'government', 'SEC', 'company announcement', 'filing', 'court',
   'FIFA', 'Federal Reserve', 'BLS', 'CPI', 'on-chain', 'USDA', 'WHO', 'FDA',
   'CME', 'CFTC', 'Treasury', 'census', 'congressional',
+  // Price / market data sources — objective, machine-readable, low dispute risk
+  'coinbase', 'binance', 'coingecko', 'coinmarketcap', 'kraken', 'bybit', 'okx',
+  'tradingview', 'chainlink', 'pyth', 'band protocol', 'nasdaq', 'bloomberg',
+  'closing price', 'spot price', 'last traded price', 'price feed',
 ]
+
+// Regex to detect price-prediction markets (e.g. "Will BTC reach $100k by Dec 2025?")
+const PRICE_MARKET_RE = /\b(reach|exceed|above|below|hit|close above|close below|trade above|trade at|over|under)\b.*\$[\d,]+|\$[\d,]+.*(reach|exceed|above|below)/i
 const VAGUE_SOURCE_WORDS   = ['credible reporting', 'reliable sources', 'consensus', 'substantial evidence']
 const EVIDENCE_TYPES       = ['screenshots', 'official statements', 'filings', 'data providers', 'on-chain transactions', 'published reports', 'press release', 'verified']
 const AMBIGUOUS_WORDS      = ['significant', 'major', 'substantial', 'likely', 'reportedly', 'effectively']
@@ -85,13 +92,17 @@ function scoreTimeClarity(question: string, description: string) {
 
 // ─── 2. Resolution Source (max 20) ───────────────────────────────────────────
 
-function scoreResolutionSource(description: string, resolutionSource: string) {
+function scoreResolutionSource(description: string, resolutionSource: string, question: string) {
   const flags: string[] = []
   const trace: ScoreTraceEntry[] = []
 
+  // Price-prediction markets resolve against an objective price feed — inherently
+  // verifiable and machine-readable, so treat them as having a strong source baseline.
+  const isPriceMarket = PRICE_MARKET_RE.test(question) || PRICE_MARKET_RE.test(description)
+
   const hasSource = resolutionSource && resolutionSource.trim().length > 0
-  let score = hasSource ? 8 : 4
-  trace.push({ rule: hasSource ? 'Resolution source present' : 'No resolution source field', delta: hasSource ? 8 : 4 })
+  let score = hasSource ? 8 : (isPriceMarket ? 7 : 4)
+  trace.push({ rule: hasSource ? 'Resolution source present' : isPriceMarket ? 'Price market — objective price feed implied' : 'No resolution source field', delta: score })
 
   if (!hasSource) {
     flags.push('No explicit resolution source URL or reference provided.')
@@ -183,13 +194,16 @@ function scoreOutcomeDefinition(question: string, description: string, outcomes:
 
 // ─── 4. Evidence Standard (max 15) ───────────────────────────────────────────
 
-function scoreEvidenceStandard(description: string) {
+function scoreEvidenceStandard(description: string, question: string) {
   const flags: string[] = []
   const trace: ScoreTraceEntry[] = []
   const lower = description.toLowerCase()
 
-  let score = description.length > 50 ? 5 : 2
-  trace.push({ rule: description.length > 50 ? 'Baseline (substantive description)' : 'Baseline (thin description)', delta: description.length > 50 ? 5 : 2 })
+  // Price markets use an objective, publicly auditable price feed — no
+  // subjective evidence interpretation needed, so grant a higher baseline.
+  const isPriceMarket = PRICE_MARKET_RE.test(question) || PRICE_MARKET_RE.test(description)
+  let score = isPriceMarket ? 8 : (description.length > 50 ? 5 : 2)
+  trace.push({ rule: isPriceMarket ? 'Price market — objective price feed (no evidence ambiguity)' : description.length > 50 ? 'Baseline (substantive description)' : 'Baseline (thin description)', delta: score })
 
   const positivePhrases = ['counts as', 'qualifies as', 'is defined as', 'accepted evidence', 'valid evidence']
   const negativePhrases = ['does not count', 'will not be counted', 'excluded', 'not accepted', 'ineligible']
@@ -229,8 +243,12 @@ function scoreEdgeCaseHandling(question: string, description: string) {
   const combined = `${question} ${description}`
   const lower = combined.toLowerCase()
 
-  let score = 5
-  trace.push({ rule: 'Baseline (standard cases assumed)', delta: 5 })
+  // Price markets resolve against a price at a specific time — there is no
+  // "cancellation" or "postponement" scenario applicable, so start at 8
+  // and skip the short-description penalty.
+  const isPriceMarket = PRICE_MARKET_RE.test(question) || PRICE_MARKET_RE.test(description)
+  let score = isPriceMarket ? 8 : 5
+  trace.push({ rule: isPriceMarket ? 'Price market — no cancellation/postponement risk' : 'Baseline (standard cases assumed)', delta: score })
 
   if (lower.includes('delay') || lower.includes('delayed') || lower.includes('postpone')) {
     score += 4
@@ -247,7 +265,7 @@ function scoreEdgeCaseHandling(question: string, description: string) {
     trace.push({ rule: 'Addresses late reporting', delta: 3, matched: late })
   }
 
-  if (description.length < 100 && score === 5) {
+  if (!isPriceMarket && description.length < 100 && score === 5) {
     score -= 2
     trace.push({ rule: 'Short description, no edge case coverage', delta: -2 })
     flags.push('Short description with no explicit edge case handling (delays, revisions, cancellations).')
@@ -376,9 +394,9 @@ export function calculateRuleClarityScore(params: {
   const { question, description, resolutionSource, outcomes } = params
 
   const tc = scoreTimeClarity(question, description)
-  const rs = scoreResolutionSource(description, resolutionSource)
+  const rs = scoreResolutionSource(description, resolutionSource, question)
   const od = scoreOutcomeDefinition(question, description, outcomes)
-  const es = scoreEvidenceStandard(description)
+  const es = scoreEvidenceStandard(description, question)
   const ec = scoreEdgeCaseHandling(question, description)
   const ph = scorePostHocRisk(description, resolutionSource, question)
 
