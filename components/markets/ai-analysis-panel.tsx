@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Sparkles, AlertTriangle, CheckCircle, MinusCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { NormalizedMarket } from '@/lib/types'
@@ -17,6 +17,7 @@ interface AiResult {
   agreementNote: string
   findings: { severity: Severity; finding: string }[]
   verdict: string
+  cached?: boolean
 }
 
 const SEVERITY_CONFIG: Record<Severity, { label: string; className: string }> = {
@@ -39,6 +40,30 @@ export function AiAnalysisPanel({ market }: AiAnalysisPanelProps) {
   const [expanded, setExpanded] = useState(true)
   const [ran, setRan] = useState(false)
 
+  // On mount, silently check if a cached result already exists for this market.
+  useEffect(() => {
+    let cancelled = false
+    async function checkCache() {
+      try {
+        const res = await fetch('/api/markets/ai-score', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ marketId: market.marketId, question: market.question }),
+        })
+        if (!res.ok) return
+        const data = await res.json() as AiResult
+        if (data.cached && !cancelled) {
+          setResult(data)
+          setRan(true)
+        }
+      } catch {
+        // silently ignore — user can still trigger manually
+      }
+    }
+    void checkCache()
+    return () => { cancelled = true }
+  }, [market.marketId]) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function runAnalysis() {
     setLoading(true)
     setError(null)
@@ -48,6 +73,7 @@ export function AiAnalysisPanel({ market }: AiAnalysisPanelProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          marketId: market.marketId,
           question: market.question,
           description: market.description,
           resolutionSource: market.resolutionSource,
@@ -196,13 +222,19 @@ export function AiAnalysisPanel({ market }: AiAnalysisPanelProps) {
               <p className="text-sm text-foreground leading-relaxed">{result.verdict}</p>
             </div>
 
-            {/* Re-run */}
-            <button
-              onClick={runAnalysis}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors text-left"
-            >
-              Re-run analysis
-            </button>
+            {/* Cached / re-run indicator */}
+            {result.cached ? (
+              <p className="text-xs text-muted-foreground">
+                Cached result &mdash; this market has already been analysed.
+              </p>
+            ) : (
+              <button
+                onClick={runAnalysis}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors text-left"
+              >
+                Re-run analysis
+              </button>
+            )}
           </div>
         )}
       </div>

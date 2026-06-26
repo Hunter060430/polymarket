@@ -7,6 +7,7 @@ import {
   serial,
   unique,
   index,
+  json,
 } from 'drizzle-orm/pg-core'
 
 // --- Better Auth required tables -------------------------------------------
@@ -124,6 +125,15 @@ export const riskVote = pgTable(
     marketIdx: index('idx_riskvote_market').on(t.marketId),
   }),
 )
+
+// Caches AI semantic analysis results per market. Written once on the first
+// analysis request; all subsequent requests return the cached result immediately
+// without calling the LLM — ensuring one AI run per market globally.
+export const aiScoreCache = pgTable('ai_score_cache', {
+  marketId:  text('market_id').primaryKey(),
+  result:    json('result').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+})
 
 // Records the actual resolution outcome for closed markets, used for
 // back-testing whether the algorithmic risk score predicted disputes correctly.

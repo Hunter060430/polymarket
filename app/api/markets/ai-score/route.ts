@@ -1,37 +1,22 @@
 // POST /api/markets/ai-score
-// Sends a market's resolution criteria to an LLM for semantic analysis,
-// supplementing the deterministic rule-clarity score with natural-language
-// reasoning about ambiguity, logical contradictions, and incomplete definitions.
+// Semantic LLM analysis of a market's resolution criteria.
+// Results are cached in ai_score_cache by market_id — the LLM is called at
+// most once per market regardless of how many users request it.
 
-export const runtime = 'edge'
+import { db } from '@/lib/db'
+import { aiScoreCache } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 
-const aiScoreRateLimitMap = new Map<string, { count: number; date: string }>()
-const MAX_PER_DAY = 10
-
-function getTodayUTC() {
-  return new Date().toISOString().slice(0, 10)
-}
+export const runtime = 'nodejs'
 
 export async function POST(req: Request) {
-  const ip =
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    req.headers.get('x-real-ip') ??
-    'unknown'
-  const today = getTodayUTC()
-  const entry = aiScoreRateLimitMap.get(ip)
-
-  if (entry && entry.date === today && entry.count >= MAX_PER_DAY) {
-    return Response.json({ error: 'Daily AI analysis limit reached. Try again tomorrow.' }, { status: 429 })
-  }
-  if (entry && entry.date === today) entry.count++
-  else aiScoreRateLimitMap.set(ip, { count: 1, date: today })
-
   const apiKey = process.env.DEEPSEEK_API_KEY
   if (!apiKey) {
     return Response.json({ error: 'AI service not configured.' }, { status: 500 })
   }
 
   const body = await req.json() as {
+    marketId?: string
     question?: string
     description?: string
     resolutionSource?: string
@@ -40,23 +25,54 @@ export async function POST(req: Request) {
     riskLevel?: string
   }
 
-  const { question = '', description = '', resolutionSource = '', outcomes = [], deterministicScore, riskLevel } = body
+  const {
+    marketId = '',
+    question = '',
+    description = '',
+    resolutionSource = '',
+    outcomes = [],
+    deterministicScore,
+    riskLevel,
+  } = body
 
   if (!question.trim()) {
     return Response.json({ error: 'Market question is required.' }, { status: 400 })
   }
 
+  // ── Cache check ──────────────────────────────────────────────────────────
+  // If we already ran AI for this market, return the cached result immediately.
+  if (marketId) {
+    const cached = await db
+      .select()
+      .from(aiScoreCache)
+      .where(eq(aiScoreCache.marketId, marketId))
+      .limit(1)
+
+    if (cached.length > 0) {
+      return Response.json({ ...cached[0].result as object, cached: true })
+    }
+  }
+
+  // ── LLM call ─────────────────────────────────────────────────────────────
   const outcomesText = outcomes.join(' / ')
+
   const systemPrompt = `You are a prediction market resolution quality analyst. You specialize in identifying ambiguous, incomplete, or manipulable resolution criteria in prediction market contracts.
 
-You will be given the resolution criteria for a Polymarket prediction market. A deterministic rule-based system has already scored it ${deterministicScore ?? '?'}/100 (risk level: ${riskLevel ?? '?'}).
+You will be given the resolution criteria for an ACTIVE, NOT YET SETTLED Polymarket prediction market. A deterministic rule-based system has already scored it ${deterministicScore ?? '?'}/100 (risk level: ${riskLevel ?? '?'}).
+
+IMPORTANT CONTEXT: This market has NOT resolved yet. Do NOT flag the absence of a historical resolution or final outcome as a finding. Only analyse the written resolution criteria text for future resolution risk.
 
 Your job is to provide a SEMANTIC analysis — look for things a rule-based system might miss:
 1. Logical contradictions in the criteria
-2. Phrases that sound specific but are actually ambiguous (e.g. "widely reported", "effectively controls")
-3. Missing definitions for key terms
-4. Scenarios where the resolution criteria could be interpreted multiple ways
-5. Whether the stated resolution source actually has the authority/capacity to resolve this market
+2. Phrases that sound specific but are actually vague (e.g. "widely reported", "effectively controls", "consensus of credible sources")
+3. Missing definitions for key terms used in the resolution criteria
+4. Scenarios where the resolution criteria could be interpreted multiple ways at resolution time
+5. Whether the stated resolution source actually has the authority/capacity to definitively resolve this market
+
+Do NOT report findings for:
+- The market not having resolved yet (it is active by design)
+- Missing final outcomes or settlement data
+- Anything that is only a concern after resolution, not before
 
 Respond with a JSON object in this exact format (no markdown, no extra text):
 {
@@ -73,7 +89,7 @@ Respond with a JSON object in this exact format (no markdown, no extra text):
 
 OUTCOMES: ${outcomesText || 'YES / NO'}
 
-RESOLUTION SOURCE: ${resolutionSource || '(not specified)'}
+RESOLUTION SOURCE: ${resolutionSource || '(not specified in criteria)'}
 
 RESOLUTION CRITERIA / DESCRIPTION:
 ${description || '(no description provided)'}`
@@ -98,20 +114,48 @@ ${description || '(no description provided)'}`
 
   if (!res.ok) {
     const errText = await res.text()
-    console.error('[ai-score] DeepSeek error:', errText)
+    console.error('[ai-score] DeepSeek error:', res.status, errText)
     return Response.json({ error: 'AI service error.' }, { status: 502 })
   }
 
   const data = await res.json() as { choices?: { message?: { content?: string } }[] }
   const raw = data.choices?.[0]?.message?.content ?? ''
 
-  let parsed: unknown
+  let parsed: Record<string, unknown>
   try {
-    // Strip possible markdown code fences
     const clean = raw.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/, '').trim()
-    parsed = JSON.parse(clean)
+    parsed = JSON.parse(clean) as Record<string, unknown>
   } catch {
     return Response.json({ error: 'AI returned malformed response.', raw }, { status: 502 })
+  }
+
+  // ── Post-process: filter false-positive findings ─────────────────────────
+  // Remove any "critical" findings that are purely about no resolution having
+  // occurred yet — these are irrelevant for active markets.
+  const UNRESOLVED_PATTERNS = [
+    /no resolution source/i,
+    /not yet resolved/i,
+    /has not (been )?resolved/i,
+    /no (final )?outcome/i,
+    /market (is|has not) (closed|settled)/i,
+    /resolution (has not|not) occurred/i,
+  ]
+
+  if (Array.isArray(parsed.findings)) {
+    parsed.findings = (parsed.findings as { severity: string; finding: string }[]).filter(
+      (f) => {
+        if (f.severity !== 'critical' && f.severity !== 'high') return true
+        return !UNRESOLVED_PATTERNS.some((re) => re.test(f.finding))
+      },
+    )
+  }
+
+  // ── Write to cache ────────────────────────────────────────────────────────
+  if (marketId) {
+    await db
+      .insert(aiScoreCache)
+      .values({ marketId, result: parsed })
+      .onConflictDoNothing()
   }
 
   return Response.json(parsed)
