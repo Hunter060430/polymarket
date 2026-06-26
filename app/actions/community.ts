@@ -2,10 +2,11 @@
 
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { marketComment, commentVote, riskVote, user } from '@/lib/db/schema'
+import { marketComment, commentVote, riskVote, user, userReputation } from '@/lib/db/schema'
 import { and, desc, eq, sql } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
+import { upsertReputation } from '@/lib/reputation'
 
 async function getSession() {
   return auth.api.getSession({ headers: await headers() })
@@ -40,6 +41,8 @@ export type CommentWithAuthor = {
   createdAt: Date
   authorName: string | null
   authorImage: string | null
+  authorBadge: string
+  authorScore: number
   hasVoted: boolean
 }
 
@@ -60,6 +63,8 @@ export async function getComments(marketId: string): Promise<CommentWithAuthor[]
       authorName: user.name,
       authorImage: user.image,
       votedId: commentVote.id,
+      authorBadge: userReputation.badge,
+      authorScore: userReputation.score,
     })
     .from(marketComment)
     .leftJoin(user, eq(marketComment.userId, user.id))
@@ -70,6 +75,7 @@ export async function getComments(marketId: string): Promise<CommentWithAuthor[]
         viewerId ? eq(commentVote.userId, viewerId) : sql`false`,
       ),
     )
+    .leftJoin(userReputation, eq(marketComment.userId, userReputation.userId))
     .where(eq(marketComment.marketId, marketId))
     .orderBy(desc(marketComment.upvotes), desc(marketComment.createdAt))
     .limit(200)
@@ -83,6 +89,8 @@ export async function getComments(marketId: string): Promise<CommentWithAuthor[]
     createdAt: r.createdAt,
     authorName: r.authorName,
     authorImage: r.authorImage,
+    authorBadge: r.authorBadge ?? 'Observer',
+    authorScore: r.authorScore ?? 0,
     hasVoted: r.votedId !== null,
   }))
 }
@@ -123,6 +131,7 @@ export async function postComment(
   }
 
   await db.insert(marketComment).values({ marketId, userId, body: trimmed })
+  void upsertReputation(userId, 'comment')
   revalidatePath(`/markets/${marketId}`)
   return { ok: true }
 }
@@ -266,6 +275,7 @@ export async function castRiskVote(
       set: { vote, updatedAt: new Date() },
     })
 
+  void upsertReputation(userId, 'vote')
   revalidatePath(`/markets/${marketId}`)
   return { ok: true }
 }

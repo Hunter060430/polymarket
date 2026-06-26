@@ -2,7 +2,7 @@
 
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { user, account, walletAddress, marketComment, riskVote } from '@/lib/db/schema'
+import { user, account, walletAddress, marketComment, riskVote, userReputation } from '@/lib/db/schema'
 import { eq, desc, ne } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
@@ -28,6 +28,7 @@ export type AccountData = {
   wallets: { id: string; address: string; chainId: number; isPrimary: boolean | null }[]
   recentComments: { id: number; marketId: string; body: string; createdAt: Date }[]
   recentVotes: { id: number; marketId: string; vote: string; createdAt: Date }[]
+  reputation: { badge: string; score: number; commentCount: number; voteCount: number } | null
 }
 
 export async function getAccountData(): Promise<AccountData | null> {
@@ -35,7 +36,7 @@ export async function getAccountData(): Promise<AccountData | null> {
   if (!session?.user) return null
   const userId = session.user.id
 
-  const [userData, accounts, wallets, comments, votes] = await Promise.all([
+  const [userData, accounts, wallets, comments, votes, rep] = await Promise.all([
     db.select().from(user).where(eq(user.id, userId)).limit(1),
     db.select({ providerId: account.providerId }).from(account).where(eq(account.userId, userId)),
     db
@@ -59,6 +60,7 @@ export async function getAccountData(): Promise<AccountData | null> {
       .where(eq(riskVote.userId, userId))
       .orderBy(desc(riskVote.createdAt))
       .limit(10),
+    db.select().from(userReputation).where(eq(userReputation.userId, userId)).limit(1),
   ])
 
   if (!userData[0]) return null
@@ -69,6 +71,9 @@ export async function getAccountData(): Promise<AccountData | null> {
     wallets,
     recentComments: comments,
     recentVotes: votes,
+    reputation: rep[0]
+      ? { badge: rep[0].badge, score: rep[0].score, commentCount: rep[0].commentCount, voteCount: rep[0].voteCount }
+      : null,
   }
 }
 

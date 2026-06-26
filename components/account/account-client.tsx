@@ -8,6 +8,7 @@ import { updateDisplayName } from '@/app/actions/account'
 import type { AccountData } from '@/app/actions/account'
 import { Pencil, Check, X, LogOut, Wallet, MessageSquare, BarChart2, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ReputationBadge } from '@/components/reputation-badge'
 
 const RISK_COLORS: Record<string, string> = {
   low:      'text-emerald-500',
@@ -89,7 +90,15 @@ export function AccountClient({ data }: { data: AccountData }) {
         {/* Name + email */}
         <div className="flex-1 min-w-0">
           {/* Display name (from OAuth / wallet, read-only) */}
-          <h2 className="text-lg font-semibold text-foreground truncate mb-0.5">{data.name}</h2>
+          <div className="flex items-center gap-2 mb-0.5">
+            <h2 className="text-lg font-semibold text-foreground truncate">{data.name}</h2>
+            <ReputationBadge
+              badge={data.reputation?.badge ?? 'Observer'}
+              score={data.reputation?.score}
+              size="sm"
+              showScore
+            />
+          </div>
 
           {/* Username (unique, editable) */}
           {editing ? (
