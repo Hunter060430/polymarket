@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Sparkles, AlertTriangle, CheckCircle, MinusCircle, ChevronDown, ChevronUp } from 'lucide-react'
+import { Sparkles, AlertTriangle, CheckCircle, MinusCircle, ChevronDown, ChevronUp, Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { NormalizedMarket } from '@/lib/types'
+import { useSession } from '@/lib/auth-client'
+import Link from 'next/link'
 
 interface AiAnalysisPanelProps {
   market: NormalizedMarket
@@ -34,6 +36,7 @@ const AGREEMENT_CONFIG = {
 }
 
 export function AiAnalysisPanel({ market }: AiAnalysisPanelProps) {
+  const { data: session, isPending: sessionPending } = useSession()
   const [result, setResult]   = useState<AiResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState<string | null>(null)
@@ -128,21 +131,33 @@ export function AiAnalysisPanel({ market }: AiAnalysisPanelProps) {
         {!ran && (
           <div className="flex flex-col items-start gap-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Run a semantic analysis of this market&apos;s resolution criteria using an LLM. 
-              The AI identifies logical contradictions, ambiguous language, and missing definitions 
+              Run a semantic analysis of this market&apos;s resolution criteria using an LLM.
+              The AI identifies logical contradictions, ambiguous language, and missing definitions
               that rule-based scoring may miss.
             </p>
             <p className="text-xs text-muted-foreground">
               Deterministic score: <span className="font-medium text-foreground">{market.score.totalScore}/100</span> &middot; Risk level: <span className="font-medium text-foreground">{market.score.riskLevel}</span>
             </p>
-            <button
-              onClick={runAnalysis}
-              disabled={loading}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
-              <Sparkles className="size-3.5" aria-hidden="true" />
-              Run AI Analysis
-            </button>
+
+            {/* Auth gate */}
+            {sessionPending ? null : session ? (
+              <button
+                onClick={runAnalysis}
+                disabled={loading}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                <Sparkles className="size-3.5" aria-hidden="true" />
+                Run AI Analysis
+              </button>
+            ) : (
+              <div className="flex items-center gap-3 border border-border px-4 py-3 bg-secondary/30">
+                <Lock className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                <p className="text-sm text-muted-foreground">
+                  <Link href="/sign-in" className="text-primary hover:underline font-medium">Sign in</Link>
+                  {' '}to run AI analysis on this market.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
