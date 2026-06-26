@@ -46,17 +46,17 @@ async function getMarketAndRelated(id: string): Promise<{
 
   if (!market) return { market: null, related: [] }
 
-  // Related: derive from full list (cheap — already cached)
+  // Related: same category pool (up to 50) for similarity matching.
+  // Falls back to full list if category is missing or yields too few results.
   const allMarkets = await fetchAllActivePolymarketMarkets()
-  const related = allMarkets
-    .filter(
-      (m) =>
-        m.marketId !== market!.marketId &&
-        (m.eventCategory === market!.eventCategory ||
-          m.score.riskLevel === market!.score.riskLevel)
-    )
-    .sort((a, b) => a.score.totalScore - b.score.totalScore)
-    .slice(0, 4)
+  const sameCategory = allMarkets.filter(
+    (m) =>
+      m.marketId !== market!.marketId &&
+      m.eventCategory &&
+      m.eventCategory === market!.eventCategory,
+  )
+  const related = (sameCategory.length >= 5 ? sameCategory : allMarkets.filter((m) => m.marketId !== market!.marketId))
+    .slice(0, 50)
 
   return { market, related }
 }

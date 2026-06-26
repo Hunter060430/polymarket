@@ -49,7 +49,7 @@ export function findSimilarMarkets(
   pool: NormalizedMarket[],
   topN = 5,
 ): SimilarMarket[] {
-  const targetText = `${target.question} ${target.description ?? ''} ${target.eventCategory ?? ''}`
+  const targetText = `${target.question} ${target.eventCategory ?? ''}`
   const targetTokens = tokenise(targetText)
   const targetTF = termFreq(targetTokens)
 
@@ -57,12 +57,24 @@ export function findSimilarMarkets(
 
   for (const m of pool) {
     if (m.marketId === target.marketId) continue
-    const mText = `${m.question} ${m.description ?? ''} ${m.eventCategory ?? ''}`
+    // Use question text only (descriptions can be very long and dominate cosine)
+    const mText = `${m.question} ${m.eventCategory ?? ''}`
     const mTokens = tokenise(mText)
     const mTF = termFreq(mTokens)
 
-    const sim = cosineSimilarity(targetTF, mTF)
-    if (sim < 0.05) continue   // Skip noise-level matches
+    let sim = cosineSimilarity(targetTF, mTF)
+
+    // Bonus for same category — ensures category matches surface even when
+    // keyword overlap is minimal (e.g. two different sports questions)
+    if (
+      target.eventCategory &&
+      m.eventCategory &&
+      target.eventCategory === m.eventCategory
+    ) {
+      sim = Math.min(1, sim + 0.15)
+    }
+
+    if (sim < 0.02) continue  // Very low bar — category bonus handles noise
 
     // Compute shared meaningful terms for display
     const sharedTerms = Array.from(targetTF.keys())
