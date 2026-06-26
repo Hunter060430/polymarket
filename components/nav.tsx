@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { CommandMenu } from '@/components/command-menu'
 import { UserMenu } from '@/components/auth/user-menu'
+import { GoogleTranslate } from '@/components/google-translate'
 import { useSession } from '@/lib/auth-client'
 
 const NAV_LINKS = [
@@ -100,6 +101,9 @@ export function Nav() {
         <div className="flex items-center gap-0.5">
           {/* Command palette (⌘K) */}
           <CommandMenu />
+
+          {/* Translate */}
+          <GoogleTranslate />
 
           {/* Theme toggle */}
           <ThemeToggle />
