@@ -6,7 +6,7 @@ import { db } from '@/lib/db'
 import { preSeasonPoints, preSeasonTaskCompletions, user } from '@/lib/db/schema'
 import { auth } from '@/lib/auth'
 import { TASKS, GENESIS_BADGES, getBadgeEligibility } from '@/lib/pre-season'
-import { eq, desc, sql } from 'drizzle-orm'
+import { and, eq, desc, sql } from 'drizzle-orm'
 import { headers } from 'next/headers'
 
 export const runtime = 'nodejs'
@@ -27,7 +27,10 @@ export async function GET() {
       const already = await db
         .select()
         .from(preSeasonTaskCompletions)
-        .where(sql`user_id = ${userId} AND task_key = ${taskKey}`)
+        .where(and(
+          eq(preSeasonTaskCompletions.userId, userId),
+          eq(preSeasonTaskCompletions.taskKey, taskKey),
+        ))
       if (already.length > 0) return
       await db.insert(preSeasonTaskCompletions).values({ userId, taskKey }).onConflictDoNothing()
       await db
