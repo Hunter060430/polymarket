@@ -1,11 +1,6 @@
 import { betterAuth } from 'better-auth'
-import { siwe } from 'better-auth/plugins/siwe'
-import { createPublicClient, http } from 'viem'
-import { mainnet } from 'viem/chains'
 import { pool } from '@/lib/db'
 
-// baseURL drives session cookies — must match the actual request origin.
-// In v0 preview the page is served from V0_RUNTIME_URL, not the production domain.
 const baseURL =
   process.env.V0_RUNTIME_URL ??
   process.env.BETTER_AUTH_URL ??
@@ -14,30 +9,6 @@ const baseURL =
     : process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
       : 'http://localhost:3000')
-
-// SIWE domain must be the canonical production domain (ver.watch).
-// Parentheses are required — without them ?? and ternary precedence
-// causes siweDomainURL to become "https://undefined".
-const siweDomainURL = (
-  process.env.BETTER_AUTH_URL ??
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : 'http://localhost:3000')
-)
-
-function getDomain(): string {
-  try {
-    const host = new URL(siweDomainURL).host
-    console.log('[v0] SIWE getDomain ->', host, '| siweDomainURL:', siweDomainURL)
-    return host
-  } catch {
-    console.log('[v0] SIWE getDomain fallback, siweDomainURL was:', siweDomainURL)
-    return 'localhost:3000'
-  }
-}
-
-// Public client used only to verify wallet signatures (EOA + smart wallets)
-const publicClient = createPublicClient({ chain: mainnet, transport: http() })
 
 export const auth = betterAuth({
   database: pool,
@@ -51,27 +22,7 @@ export const auth = betterAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
     },
   },
-  plugins: [
-    siwe({
-      domain: getDomain(),
-      // Wallet-only users have no email; generate a placeholder one.
-      emailDomainName: getDomain().replace(/:.*$/, ''),
-      anonymous: true,
-      getNonce: async () =>
-        crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, ''),
-      verifyMessage: async ({ message, signature, address }) => {
-        try {
-          return await publicClient.verifyMessage({
-            address: address as `0x${string}`,
-            message,
-            signature: signature as `0x${string}`,
-          })
-        } catch {
-          return false
-        }
-      },
-    }),
-  ],
+  plugins: [],
   trustedOrigins: [
     'http://localhost:3000',
     'http://localhost:3001',

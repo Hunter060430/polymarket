@@ -2,8 +2,8 @@
 
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { user, account, walletAddress, marketComment, riskVote, userReputation } from '@/lib/db/schema'
-import { eq, desc, ne } from 'drizzle-orm'
+import { user, account, marketComment, riskVote, userReputation } from '@/lib/db/schema'
+import { eq, desc } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 
@@ -25,7 +25,6 @@ export type AccountData = {
   image: string | null
   createdAt: Date
   providers: string[]
-  wallets: { id: string; address: string; chainId: number; isPrimary: boolean | null }[]
   recentComments: { id: number; marketId: string; body: string; createdAt: Date }[]
   recentVotes: { id: number; marketId: string; vote: string; createdAt: Date }[]
   reputation: { badge: string; score: number; commentCount: number; voteCount: number } | null
@@ -36,18 +35,9 @@ export async function getAccountData(): Promise<AccountData | null> {
   if (!session?.user) return null
   const userId = session.user.id
 
-  const [userData, accounts, wallets, comments, votes, rep] = await Promise.all([
+  const [userData, accounts, comments, votes, rep] = await Promise.all([
     db.select().from(user).where(eq(user.id, userId)).limit(1),
     db.select({ providerId: account.providerId }).from(account).where(eq(account.userId, userId)),
-    db
-      .select({
-        id: walletAddress.id,
-        address: walletAddress.address,
-        chainId: walletAddress.chainId,
-        isPrimary: walletAddress.isPrimary,
-      })
-      .from(walletAddress)
-      .where(eq(walletAddress.userId, userId)),
     db
       .select({ id: marketComment.id, marketId: marketComment.marketId, body: marketComment.body, createdAt: marketComment.createdAt })
       .from(marketComment)
@@ -68,7 +58,6 @@ export async function getAccountData(): Promise<AccountData | null> {
   return {
     ...userData[0],
     providers: accounts.map((a) => a.providerId),
-    wallets,
     recentComments: comments,
     recentVotes: votes,
     reputation: rep[0]
