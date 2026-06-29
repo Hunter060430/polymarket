@@ -152,6 +152,37 @@ export const marketResolution = pgTable('market_resolution', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 
+// Pre-Season points ledger — one row per user, updated atomically on each award.
+export const preSeasonPoints = pgTable('pre_season_points', {
+  userId:    text('user_id').primaryKey(),
+  points:    integer('points').notNull().default(0),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+})
+
+// Tracks which one-time tasks each user has completed during Pre-Season.
+export const preSeasonTaskCompletions = pgTable(
+  'pre_season_task_completions',
+  {
+    id:          serial('id').primaryKey(),
+    userId:      text('user_id').notNull(),
+    taskKey:     text('task_key').notNull(),
+    completedAt: timestamp('completed_at').notNull().defaultNow(),
+  },
+  (t) => ({ uniq: unique().on(t.userId, t.taskKey) }),
+)
+
+// Tracks which scarce Genesis badges each user has claimed.
+export const genesisBadgeClaims = pgTable(
+  'genesis_badge_claims',
+  {
+    id:        serial('id').primaryKey(),
+    userId:    text('user_id').notNull(),
+    badgeKey:  text('badge_key').notNull(),
+    claimedAt: timestamp('claimed_at').notNull().defaultNow(),
+  },
+  (t) => ({ uniq: unique().on(t.userId, t.badgeKey) }),
+)
+
 // Tracks community reputation accumulated through comments, votes, and
 // accurate risk predictions. Badge thresholds: Observer 0–9, Contributor 10–49, Expert 50+.
 export const userReputation = pgTable('user_reputation', {

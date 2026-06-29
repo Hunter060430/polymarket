@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import type { NormalizedMarket } from '@/lib/types'
 import { useSession } from '@/lib/auth-client'
 import Link from 'next/link'
+import { awardTask } from '@/lib/pre-season-award'
 
 interface AiAnalysisPanelProps {
   market: NormalizedMarket
@@ -103,6 +104,8 @@ export function AiAnalysisPanel({ market }: AiAnalysisPanelProps) {
       }
       const data = await res.json() as AiResult
       setResult(data)
+      // Award pre-season points for running AI analysis (idempotent server-side)
+      awardTask('run_ai_analysis')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unexpected error.')
     } finally {

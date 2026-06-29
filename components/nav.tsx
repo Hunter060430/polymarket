@@ -18,6 +18,7 @@ const NAV_LINKS = [
   { href: '/compare',          label: 'Compare'        },
   { href: '/markets/resolved', label: 'Resolved'       },
   { href: '/ask',              label: 'Ask AI'         },
+  { href: '/pre-season',       label: 'Pre-Season'     },
   { href: '/methodology',      label: 'Methodology'    },
   { href: '/api-docs',         label: 'API'            },
   { href: '/about',            label: 'About'          },
@@ -89,9 +90,17 @@ export function Nav() {
                     ? 'text-foreground after:absolute after:bottom-0 after:left-3 after:right-3 after:h-[1.5px] after:bg-foreground'
                     : 'text-muted-foreground hover:text-foreground',
                   href === '/methodology' && 'hidden lg:inline-flex',
+                  href === '/api-docs' && 'hidden lg:inline-flex',
+                  href === '/about' && 'hidden lg:inline-flex',
                 )}
               >
                 {label}
+                {href === '/pre-season' && (
+                  <span className="ml-1.5 relative flex size-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                    <span className="relative inline-flex rounded-full size-1.5 bg-primary" />
+                  </span>
+                )}
               </Link>
             )
           })}
