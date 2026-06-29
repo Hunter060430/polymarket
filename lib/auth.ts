@@ -4,9 +4,8 @@ import { createPublicClient, http } from 'viem'
 import { mainnet } from 'viem/chains'
 import { pool } from '@/lib/db'
 
-// Priority: v0 preview runtime > production URL > fallback
-// BETTER_AUTH_URL is the production domain — in preview/dev the cookie
-// domain must match the actual request origin, so we prefer V0_RUNTIME_URL.
+// baseURL drives session cookies — must match the actual request origin.
+// In v0 preview the page is served from V0_RUNTIME_URL, not the production domain.
 const baseURL =
   process.env.V0_RUNTIME_URL ??
   process.env.BETTER_AUTH_URL ??
@@ -16,9 +15,17 @@ const baseURL =
       ? `https://${process.env.VERCEL_URL}`
       : 'http://localhost:3000')
 
+// SIWE domain must be the canonical production domain (ver.watch).
+// This is what users sign — it never changes regardless of environment.
+const siweDomainURL =
+  process.env.BETTER_AUTH_URL ??
+  process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : 'http://localhost:3000'
+
 function getDomain(): string {
   try {
-    return baseURL ? new URL(baseURL).host : 'localhost:3000'
+    return new URL(siweDomainURL!).host
   } catch {
     return 'localhost:3000'
   }
