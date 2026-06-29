@@ -7,8 +7,26 @@ import { authClient } from '@/lib/auth-client'
 import { Loader2, Wallet, ChevronDown, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-function WalletIcon({ name }: { name: string }) {
+// Per-wallet icon SVGs
+function WalletIcon({ name, iconUrl }: { name: string; iconUrl?: string }) {
+  if (iconUrl) {
+    return <img src={iconUrl} alt={name} className="size-5 shrink-0 rounded" />
+  }
   const lower = name.toLowerCase()
+  if (lower.includes('metamask')) {
+    return (
+      <svg viewBox="0 0 35 33" className="size-5 shrink-0" aria-hidden="true">
+        <polygon fill="#E17726" stroke="#E17726" strokeWidth=".25" points="32.958.5 19.48 10.47 21.992 4.47"/>
+        <polygon fill="#E27625" stroke="#E27625" strokeWidth=".25" points="2.042.5 15.4 10.56 13.008 4.47"/>
+        <polygon fill="#E27625" stroke="#E27625" strokeWidth=".25" points="28.185 23.518 24.624 28.97 32.222 31.078 34.418 23.64"/>
+        <polygon fill="#E27625" stroke="#E27625" strokeWidth=".25" points=".582 23.64 2.778 31.078 10.376 28.97 6.815 23.518"/>
+        <polygon fill="#E27625" stroke="#E27625" strokeWidth=".25" points="9.976 14.82 7.838 18.018 15.37 18.35 15.13 10.22"/>
+        <polygon fill="#E27625" stroke="#E27625" strokeWidth=".25" points="25.024 14.82 19.75 10.13 19.63 18.35 27.162 18.018"/>
+        <polygon fill="#E27625" stroke="#E27625" strokeWidth=".25" points="10.376 28.97 14.93 26.738 10.978 23.694"/>
+        <polygon fill="#E27625" stroke="#E27625" strokeWidth=".25" points="20.07 26.738 24.624 28.97 24.022 23.694"/>
+      </svg>
+    )
+  }
   if (lower.includes('coinbase')) {
     return (
       <svg viewBox="0 0 32 32" className="size-5 shrink-0" aria-hidden="true">
@@ -18,6 +36,14 @@ function WalletIcon({ name }: { name: string }) {
       </svg>
     )
   }
+  if (lower.includes('brave')) {
+    return (
+      <svg viewBox="0 0 24 24" className="size-5 shrink-0" fill="#FB542B" aria-hidden="true">
+        <path d="M19.78 8.76l.22-1.04-.9-.8.68-1-.84-.68-.8.94-1.1-.3L16.7 5h-1.08l-.34 1.14-1.1.3-.8-.94-.84.68.68 1-.9.8.22 1.04-.98.56v1.12l.98.56.22 1.04.9.8-.68 1 .84.68.8-.94 1.1.3.34 1.14h1.08l.34-1.14 1.1-.3.8.94.84-.68-.68-1 .9-.8.22-1.04.98-.56V9.32l-.98-.56zM16.16 13a2.88 2.88 0 1 1 0-5.76 2.88 2.88 0 0 1 0 5.76z"/>
+      </svg>
+    )
+  }
+  // Generic
   return (
     <span className="size-5 shrink-0 flex items-center justify-center rounded bg-secondary border border-border">
       <Wallet className="size-3 text-muted-foreground" />
@@ -36,12 +62,10 @@ export function WalletButton() {
   const [siweLoading, setSiweLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Track whether we initiated the connect from this component so we don't
-  // run SIWE for a wallet that was already connected before the page loaded.
+  // Track whether SIWE was initiated from this component
   const pendingSiwe = useRef(false)
 
-  // When a wallet finishes connecting (address + chain become available) and
-  // we initiated it, kick off the SIWE flow automatically.
+  // When wallet finishes connecting and we initiated it, run SIWE
   useEffect(() => {
     if (!isConnected || !address || !chain || !pendingSiwe.current) return
     pendingSiwe.current = false
@@ -53,12 +77,8 @@ export function WalletButton() {
     setSiweLoading(true)
     setError(null)
     try {
-      // 1. Get nonce + server-expected domain in parallel
       const [nonceRes, domainRes] = await Promise.all([
-        authClient.siwe.getNonce({
-          walletAddress: addr as `0x${string}`,
-          chainId,
-        }),
+        authClient.siwe.getNonce({ walletAddress: addr as `0x${string}`, chainId }),
         fetch('/api/auth/siwe/domain').then(r => r.json() as Promise<{ domain: string }>),
       ])
       if (nonceRes.error) throw new Error(`Nonce error: ${nonceRes.error.message}`)
@@ -68,7 +88,6 @@ export function WalletButton() {
       const uri      = `https://${domain}`
       const issuedAt = new Date().toISOString()
 
-      // 2. Build EIP-4361 SIWE message
       const message =
         `${domain} wants you to sign in with your Ethereum account:\n` +
         `${addr}\n\n` +
@@ -79,19 +98,15 @@ export function WalletButton() {
         `Nonce: ${nonce}\n` +
         `Issued At: ${issuedAt}`
 
-      // 3. Sign via Wagmi — routes through whichever wallet the user connected
       const signature = await signMessageAsync({ message })
 
-      // 4. Verify with Better Auth (same-origin $fetch keeps baseURL correct)
       const verifyRes = await authClient.$fetch('/siwe/verify', {
         method: 'POST',
         body: { message, signature, walletAddress: addr, chainId },
         credentials: 'include',
       })
       if (verifyRes.error) {
-        throw new Error(
-          (verifyRes.error as { message?: string }).message ?? 'Signature verification failed.',
-        )
+        throw new Error((verifyRes.error as { message?: string }).message ?? 'Verification failed.')
       }
 
       router.push('/')
@@ -113,7 +128,16 @@ export function WalletButton() {
     connect({ connector })
   }
 
-  const availableConnectors = connectors.filter(c => c.type !== 'walletConnect')
+  // Filter: always show coinbaseWallet; only show injected if window.ethereum exists
+  const displayConnectors = connectors.filter(c => {
+    if (c.type === 'walletConnect') return false
+    if (c.id === 'injected') {
+      // Only show if there's actually an injected provider
+      return typeof window !== 'undefined' && !!(window as unknown as { ethereum?: unknown }).ethereum
+    }
+    return true
+  })
+
   const isLoading = isConnecting || siweLoading
 
   return (
@@ -128,11 +152,7 @@ export function WalletButton() {
           {isLoading
             ? <Loader2 className="size-4 animate-spin" />
             : <Wallet className="size-4" aria-hidden="true" />}
-          {siweLoading
-            ? 'Signing in…'
-            : isConnecting
-              ? 'Connecting wallet…'
-              : 'Continue with Wallet'}
+          {siweLoading ? 'Signing in…' : isConnecting ? 'Connecting…' : 'Continue with Wallet'}
         </span>
         {!isLoading && (
           <ChevronDown
@@ -146,39 +166,39 @@ export function WalletButton() {
         <div className="absolute left-0 right-0 top-full mt-1 border border-border bg-background z-50 shadow-md">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
-              Choose wallet
+              选择钱包
             </span>
             <button
               onClick={() => setOpen(false)}
               className="text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Close wallet picker"
+              aria-label="Close"
             >
               <X className="size-3.5" />
             </button>
           </div>
 
-          {availableConnectors.length === 0 ? (
+          {displayConnectors.length === 0 ? (
             <div className="px-4 py-5 text-sm text-muted-foreground text-center">
-              No wallet detected.{' '}
+              未检测到钱包。{' '}
               <a
                 href="https://metamask.io/download/"
                 target="_blank"
                 rel="noreferrer"
                 className="underline underline-offset-4 hover:text-foreground"
               >
-                Install MetaMask
+                安装 MetaMask
               </a>
             </div>
           ) : (
             <ul>
-              {availableConnectors.map(connector => (
+              {displayConnectors.map(connector => (
                 <li key={connector.id}>
                   <button
                     type="button"
                     onClick={() => handleConnect(connector.id)}
                     className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-secondary/50 transition-colors"
                   >
-                    <WalletIcon name={connector.name} />
+                    <WalletIcon name={connector.name} iconUrl={(connector as { icon?: string }).icon} />
                     <span>{connector.name}</span>
                   </button>
                 </li>
