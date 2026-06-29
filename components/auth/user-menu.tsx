@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useSession, signOut } from '@/lib/auth-client'
-import { User, LogOut, Star } from 'lucide-react'
+import { User, LogOut, Star, Zap } from 'lucide-react'
 
 export function UserMenu() {
   const { data: session, isPending } = useSession()
@@ -71,6 +71,18 @@ export function UserMenu() {
               <p className="text-xs text-muted-foreground truncate mt-0.5">{user.email}</p>
             )}
           </div>
+          <Link
+            href="/pre-season"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/40 transition-colors"
+          >
+            <Zap className="size-3.5" aria-hidden="true" />
+            Pre-Season
+            <span className="ml-auto relative flex size-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex rounded-full size-1.5 bg-primary" />
+            </span>
+          </Link>
           <Link
             href="/watchlist"
             onClick={() => setOpen(false)}

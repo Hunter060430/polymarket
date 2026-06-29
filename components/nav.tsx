@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { Menu, X, User, Star, LogIn } from 'lucide-react'
+import { Menu, X, User, Star, LogIn, MoreHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { CommandMenu } from '@/components/command-menu'
@@ -18,17 +18,34 @@ const NAV_LINKS = [
   { href: '/compare',          label: 'Compare'        },
   { href: '/markets/resolved', label: 'Resolved'       },
   { href: '/ask',              label: 'Ask AI'         },
-  { href: '/pre-season',       label: 'Pre-Season'     },
-  { href: '/methodology',      label: 'Methodology'    },
-  { href: '/api-docs',         label: 'API'            },
-  { href: '/about',            label: 'About'          },
+  { href: '/methodology',      label: 'Methodology',   moreOnly: true },
+  { href: '/api-docs',         label: 'API',           moreOnly: true },
+  { href: '/about',            label: 'About',         moreOnly: true },
+]
+
+const MORE_LINKS = [
+  { href: '/methodology', label: 'Methodology' },
+  { href: '/api-docs',    label: 'API Reference' },
+  { href: '/about',       label: 'About' },
+  { href: '/whitepaper',  label: 'Whitepaper' },
 ]
 
 export function Nav() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const moreRef = useRef<HTMLDivElement>(null)
   const hamburgerRef = useRef<HTMLButtonElement>(null)
   const { data: session } = useSession()
+
+  // Close More dropdown on outside click
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
 
   // Close on Escape; lock body scroll when open
   useEffect(() => {
@@ -76,7 +93,7 @@ export function Nav() {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center" aria-label="Main navigation">
-          {NAV_LINKS.map(({ href, label }) => {
+          {NAV_LINKS.filter(l => !l.moreOnly).map(({ href, label }) => {
             const active = href === '/dashboard'
               ? pathname === href
               : pathname.startsWith(href)
@@ -89,21 +106,47 @@ export function Nav() {
                   active
                     ? 'text-foreground after:absolute after:bottom-0 after:left-3 after:right-3 after:h-[1.5px] after:bg-foreground'
                     : 'text-muted-foreground hover:text-foreground',
-                  href === '/methodology' && 'hidden lg:inline-flex',
-                  href === '/api-docs' && 'hidden lg:inline-flex',
-                  href === '/about' && 'hidden lg:inline-flex',
                 )}
               >
                 {label}
-                {href === '/pre-season' && (
-                  <span className="ml-1.5 relative flex size-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                    <span className="relative inline-flex rounded-full size-1.5 bg-primary" />
-                  </span>
-                )}
               </Link>
             )
           })}
+
+          {/* More dropdown — Methodology, API, About, Whitepaper */}
+          <div className="relative" ref={moreRef}>
+            <button
+              onClick={() => setMoreOpen(v => !v)}
+              aria-label="More navigation links"
+              aria-expanded={moreOpen}
+              className={cn(
+                'relative px-3 h-14 inline-flex items-center gap-1 text-xs tracking-[0.06em] uppercase transition-colors',
+                moreOpen ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              More
+              <MoreHorizontal className="size-3.5" aria-hidden="true" />
+            </button>
+            {moreOpen && (
+              <div className="absolute left-0 top-14 w-44 border border-border bg-background shadow-lg z-50">
+                {MORE_LINKS.map(({ href, label }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setMoreOpen(false)}
+                    className={cn(
+                      'flex px-4 py-2.5 text-xs tracking-[0.06em] uppercase transition-colors',
+                      pathname.startsWith(href)
+                        ? 'text-foreground bg-secondary/30'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/40',
+                    )}
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
         </nav>
 
         {/* Right-side controls */}

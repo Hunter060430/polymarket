@@ -1,14 +1,15 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { signOut } from '@/lib/auth-client'
 import { updateDisplayName } from '@/app/actions/account'
 import type { AccountData } from '@/app/actions/account'
-import { Pencil, Check, X, LogOut, Wallet, MessageSquare, BarChart2, ExternalLink } from 'lucide-react'
+import { Pencil, Check, X, LogOut, Wallet, MessageSquare, BarChart2, ExternalLink, Zap, Trophy, Shield, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ReputationBadge } from '@/components/reputation-badge'
+import { TASKS } from '@/lib/pre-season'
 
 const RISK_COLORS: Record<string, string> = {
   low:      'text-emerald-500',
@@ -72,6 +73,9 @@ export function AccountClient({ data }: { data: AccountData }) {
 
   return (
     <div className="flex flex-col gap-8">
+
+      {/* ── Pre-Season summary ────────────────────────── */}
+      <PreSeasonCard />
 
       {/* ── Profile card ──────────────────────────────── */}
       <div className="border border-border p-6 flex flex-col sm:flex-row sm:items-center gap-5">
@@ -258,6 +262,82 @@ export function AccountClient({ data }: { data: AccountData }) {
         </section>
       </div>
     </div>
+  )
+}
+
+function PreSeasonCard() {
+  const [data, setData] = useState<{
+    points: number
+    rank: number
+    completedKeys: string[]
+    eligibleBadges: { key: string; name: string }[]
+  } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/pre-season/me')
+      .then(r => r.json())
+      .then(d => setData(d))
+      .catch(() => {})
+  }, [])
+
+  const totalTasks = TASKS.length
+  const completed = data?.completedKeys.length ?? 0
+  const pct = data ? Math.round((completed / totalTasks) * 100) : 0
+
+  return (
+    <Link
+      href="/pre-season"
+      className="block border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors p-5 group"
+    >
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <div className="flex items-center gap-2">
+          <Zap className="size-4 text-primary shrink-0" aria-hidden="true" />
+          <span className="text-xs tracking-[0.1em] uppercase font-medium text-foreground">Pre-Season</span>
+          <span className="relative flex size-1.5 ml-1">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+            <span className="relative inline-flex rounded-full size-1.5 bg-primary" />
+          </span>
+        </div>
+        <ArrowRight className="size-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" aria-hidden="true" />
+      </div>
+
+      <div className="grid grid-cols-3 gap-4 mb-4">
+        <div>
+          <div className="text-xs text-muted-foreground mb-0.5">Points</div>
+          <div className="text-xl font-bold text-foreground tabular-nums">
+            {data ? data.points.toLocaleString() : '—'}
+          </div>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground mb-0.5">Rank</div>
+          <div className="text-xl font-bold text-foreground tabular-nums flex items-center gap-1">
+            <Trophy className="size-3.5 text-muted-foreground" aria-hidden="true" />
+            {data ? `#${data.rank}` : '—'}
+          </div>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground mb-0.5">Badges</div>
+          <div className="text-xl font-bold text-foreground tabular-nums flex items-center gap-1">
+            <Shield className="size-3.5 text-muted-foreground" aria-hidden="true" />
+            {data ? data.eligibleBadges.length : '—'}
+          </div>
+        </div>
+      </div>
+
+      {/* Task progress bar */}
+      <div>
+        <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
+          <span>Task progress</span>
+          <span>{completed} / {totalTasks} tasks ({pct}%)</span>
+        </div>
+        <div className="h-1.5 bg-muted w-full">
+          <div
+            className="h-full bg-primary transition-all duration-700"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+    </Link>
   )
 }
 
