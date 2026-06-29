@@ -38,6 +38,7 @@ export function formatDate(dateStr: string | null | undefined): string | null {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
+      timeZone: 'UTC',
     })
   } catch {
     return null
