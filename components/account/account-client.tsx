@@ -135,7 +135,7 @@ export function AccountClient({ data }: { data: AccountData }) {
             <p className="text-sm text-muted-foreground truncate">{data.email}</p>
           )}
           <p className="text-xs text-muted-foreground mt-1">
-            Joined {new Date(data.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            Joined {new Date(data.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })}
           </p>
         </div>
 
