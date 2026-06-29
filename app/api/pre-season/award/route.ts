@@ -6,7 +6,7 @@ import { db } from '@/lib/db'
 import { preSeasonPoints, preSeasonTaskCompletions } from '@/lib/db/schema'
 import { TASKS } from '@/lib/pre-season'
 import { auth } from '@/lib/auth'
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { headers } from 'next/headers'
 
 export const runtime = 'nodejs'
@@ -29,12 +29,14 @@ export async function POST(req: Request) {
   // Check if already completed (for non-repeatable tasks)
   if (!task.repeatable) {
     const existing = await db
-      .select()
+      .select({ id: preSeasonTaskCompletions.id })
       .from(preSeasonTaskCompletions)
-      .where(eq(preSeasonTaskCompletions.userId, userId))
-      .then(rows => rows.find(r => r.taskKey === taskKey))
+      .where(and(
+        eq(preSeasonTaskCompletions.userId, userId),
+        eq(preSeasonTaskCompletions.taskKey, taskKey),
+      ))
 
-    if (existing) {
+    if (existing.length > 0) {
       return Response.json({ alreadyAwarded: true, points: 0 })
     }
   }
