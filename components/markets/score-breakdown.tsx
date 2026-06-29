@@ -73,7 +73,7 @@ export function ScoreBreakdown({ breakdown, dimensionDetails }: ScoreBreakdownPr
             {/* Bar + per-dimension explanation */}
             <div className="flex flex-col gap-1.5 justify-center">
               <div
-                className="h-[3px] w-full bg-muted overflow-hidden"
+                className="h-2 w-full bg-muted rounded-full overflow-hidden"
                 role="progressbar"
                 aria-valuenow={raw}
                 aria-valuemin={0}
@@ -81,7 +81,7 @@ export function ScoreBreakdown({ breakdown, dimensionDetails }: ScoreBreakdownPr
                 aria-label={`${label}: ${raw} out of ${max}`}
               >
                 <div
-                  className="h-full transition-all duration-500"
+                  className="h-full rounded-full transition-all duration-500"
                   style={{ width: `${pct}%`, backgroundColor: color }}
                 />
               </div>

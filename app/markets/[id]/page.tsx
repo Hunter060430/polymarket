@@ -55,8 +55,14 @@ async function getMarketAndRelated(id: string): Promise<{
       m.eventCategory &&
       m.eventCategory === market!.eventCategory,
   )
-  const related = (sameCategory.length >= 5 ? sameCategory : allMarkets.filter((m) => m.marketId !== market!.marketId))
-    .slice(0, 50)
+  // If same-category pool is too small, fall back to same risk level — never
+  // use the entire unfiltered list which causes completely unrelated matches.
+  const fallbackPool = allMarkets.filter(
+    (m) =>
+      m.marketId !== market!.marketId &&
+      m.score.riskLevel === market!.score.riskLevel,
+  )
+  const related = (sameCategory.length >= 5 ? sameCategory : fallbackPool).slice(0, 50)
 
   return { market, related }
 }
@@ -297,9 +303,14 @@ export default async function MarketDetailPage({
             {market.resolutionSource ? (
               <p className="text-sm leading-relaxed text-foreground">{market.resolutionSource}</p>
             ) : (
-              <span className="text-xs text-destructive border border-destructive/30 px-3 py-1 inline-block">
-                Not specified
-              </span>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-destructive border border-destructive/30 px-3 py-1 inline-block self-start">
+                  Not specified
+                </span>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  No authoritative source is named for resolving this market. This increases the risk of subjective or disputed resolution outcomes.
+                </p>
+              </div>
             )}
           </div>
 
