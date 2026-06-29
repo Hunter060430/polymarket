@@ -1,13 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useConnect, useAccount, useDisconnect, useSignMessage } from 'wagmi'
 import { authClient } from '@/lib/auth-client'
 import { Loader2, Wallet, ChevronDown, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// Wallet icon as inline SVG so we have no extra image deps
 function WalletIcon({ name }: { name: string }) {
   const lower = name.toLowerCase()
   if (lower.includes('coinbase')) {
@@ -35,8 +34,20 @@ export function WalletButton() {
 
   const [open, setOpen] = useState(false)
   const [siweLoading, setSiweLoading] = useState(false)
-  const [activeConnector, setActiveConnector] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Track whether we initiated the connect from this component so we don't
+  // run SIWE for a wallet that was already connected before the page loaded.
+  const pendingSiwe = useRef(false)
+
+  // When a wallet finishes connecting (address + chain become available) and
+  // we initiated it, kick off the SIWE flow automatically.
+  useEffect(() => {
+    if (!isConnected || !address || !chain || !pendingSiwe.current) return
+    pendingSiwe.current = false
+    runSiwe(address, chain.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, address, chain])
 
   async function runSiwe(addr: string, chainId: number) {
     setSiweLoading(true)
@@ -52,12 +63,12 @@ export function WalletButton() {
       ])
       if (nonceRes.error) throw new Error(`Nonce error: ${nonceRes.error.message}`)
 
-      const nonce  = (nonceRes.data as { nonce: string }).nonce
-      const domain = domainRes.domain
-      const uri    = `https://${domain}`
+      const nonce    = (nonceRes.data as { nonce: string }).nonce
+      const domain   = domainRes.domain
+      const uri      = `https://${domain}`
       const issuedAt = new Date().toISOString()
 
-      // 2. Build EIP-4361 message
+      // 2. Build EIP-4361 SIWE message
       const message =
         `${domain} wants you to sign in with your Ethereum account:\n` +
         `${addr}\n\n` +
@@ -68,10 +79,10 @@ export function WalletButton() {
         `Nonce: ${nonce}\n` +
         `Issued At: ${issuedAt}`
 
-      // 3. Sign via Wagmi (routes through the connected wallet correctly)
+      // 3. Sign via Wagmi — routes through whichever wallet the user connected
       const signature = await signMessageAsync({ message })
 
-      // 4. Verify with Better Auth
+      // 4. Verify with Better Auth (same-origin $fetch keeps baseURL correct)
       const verifyRes = await authClient.$fetch('/siwe/verify', {
         method: 'POST',
         body: { message, signature, walletAddress: addr, chainId },
@@ -90,65 +101,33 @@ export function WalletButton() {
       disconnect()
     } finally {
       setSiweLoading(false)
-      setActiveConnector(null)
     }
   }
 
-  // When a wallet connects, immediately run SIWE
-  async function handleConnect(connectorId: string) {
+  function handleConnect(connectorId: string) {
     setError(null)
-    setActiveConnector(connectorId)
     setOpen(false)
     const connector = connectors.find(c => c.id === connectorId)
     if (!connector) return
-
-    try {
-      await new Promise<void>((resolve, reject) => {
-        connect(
-          { connector },
-          {
-            onSuccess: () => resolve(),
-            onError: (e) => reject(e),
-          },
-        )
-      })
-      // address/chain available after connect
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Connection failed.')
-      setActiveConnector(null)
-    }
+    pendingSiwe.current = true
+    connect({ connector })
   }
-
-  // Once connected (address + chain available), run SIWE automatically
-  const [hasTriggeredSiwe, setHasTriggeredSiwe] = useState(false)
-  if (isConnected && address && chain && !siweLoading && !hasTriggeredSiwe && activeConnector) {
-    setHasTriggeredSiwe(true)
-    runSiwe(address, chain.id)
-  }
-  // Reset trigger when disconnected
-  if (!isConnected && hasTriggeredSiwe) setHasTriggeredSiwe(false)
 
   const availableConnectors = connectors.filter(c => c.type !== 'walletConnect')
   const isLoading = isConnecting || siweLoading
 
   return (
     <div className="relative w-full">
-      {/* Main button */}
       <button
         type="button"
-        onClick={() => {
-          setError(null)
-          setOpen(v => !v)
-        }}
+        onClick={() => { setError(null); setOpen(v => !v) }}
         disabled={isLoading}
         className="w-full inline-flex items-center justify-between gap-2.5 border border-border px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors disabled:opacity-50"
       >
         <span className="flex items-center gap-2.5">
-          {isLoading ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Wallet className="size-4" aria-hidden="true" />
-          )}
+          {isLoading
+            ? <Loader2 className="size-4 animate-spin" />
+            : <Wallet className="size-4" aria-hidden="true" />}
           {siweLoading
             ? 'Signing in…'
             : isConnecting
@@ -163,7 +142,6 @@ export function WalletButton() {
         )}
       </button>
 
-      {/* Wallet picker dropdown */}
       {open && !isLoading && (
         <div className="absolute left-0 right-0 top-full mt-1 border border-border bg-background z-50 shadow-md">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
@@ -210,7 +188,6 @@ export function WalletButton() {
         </div>
       )}
 
-      {/* Inline error */}
       {error && (
         <p className="text-xs text-destructive border-l-2 border-destructive pl-3 py-1 mt-2">
           {error}
