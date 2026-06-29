@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { signIn } from '@/lib/auth-client'
-import { WalletButton } from '@/components/auth/wallet-button'
 import { Loader2 } from 'lucide-react'
 
 
@@ -58,8 +57,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
           Continue with Google
         </button>
 
-        {/* Wallet: RainbowKit-free but Wagmi-powered connector picker + SIWE */}
-        <WalletButton />
+
       </div>
 
       {error && (

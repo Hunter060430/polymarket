@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { signOut } from '@/lib/auth-client'
 import { updateDisplayName } from '@/app/actions/account'
 import type { AccountData } from '@/app/actions/account'
-import { Pencil, Check, X, LogOut, Wallet, BarChart2, ExternalLink, Zap, Trophy, Shield, ArrowRight } from 'lucide-react'
+import { Pencil, Check, X, LogOut, BarChart2, ExternalLink, Zap, Trophy, Shield, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TASKS } from '@/lib/pre-season'
 
@@ -15,10 +15,6 @@ const RISK_COLORS: Record<string, string> = {
   medium:   'text-yellow-500',
   high:     'text-orange-500',
   critical: 'text-red-500',
-}
-
-function truncateAddress(addr: string) {
-  return addr.length > 12 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr
 }
 
 function timeAgo(date: Date) {
@@ -149,49 +145,21 @@ export function AccountClient({ data }: { data: AccountData }) {
       {/* ── Pre-Season point stats ────────────────────── */}
       <PreSeasonStatsRow />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        {/* ── Connected wallets ─────────────────────── */}
-        <section>
-          <h3 className="text-xs tracking-[0.1em] uppercase text-muted-foreground mb-3">Connected Wallets</h3>
-          {data.wallets.length === 0 ? (
-            <div className="border border-border px-5 py-8 text-center text-sm text-muted-foreground">
-              No wallets connected yet.
-            </div>
-          ) : (
-            <ul className="border border-border divide-y divide-border">
-              {data.wallets.map((w) => (
-                <li key={w.id} className="flex items-center justify-between px-4 py-3 gap-3">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Wallet className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-                    <span className="font-mono text-sm text-foreground truncate">{truncateAddress(w.address)}</span>
-                    {w.isPrimary && (
-                      <span className="text-[10px] tracking-wider uppercase px-1.5 py-0.5 bg-primary/10 text-primary border border-primary/20">Primary</span>
-                    )}
-                  </div>
-                  <span className="text-xs text-muted-foreground shrink-0">Chain {w.chainId}</span>
-                </li>
-              ))}
-            </ul>
+      {/* ── Sign-in providers ─────────────────────────────── */}
+      <section>
+        <h3 className="text-xs tracking-[0.1em] uppercase text-muted-foreground mb-3">Sign-in Methods</h3>
+        <ul className="border border-border divide-y divide-border">
+          {data.providers.map((p) => (
+            <li key={p} className="flex items-center gap-3 px-4 py-3">
+              <span className="size-2 rounded-full bg-emerald-500 shrink-0" />
+              <span className="text-sm text-foreground capitalize">{p}</span>
+            </li>
+          ))}
+          {data.providers.length === 0 && (
+            <li className="px-4 py-3 text-sm text-muted-foreground">No providers linked.</li>
           )}
-        </section>
-
-        {/* ── Sign-in providers ─────────────────────── */}
-        <section>
-          <h3 className="text-xs tracking-[0.1em] uppercase text-muted-foreground mb-3">Sign-in Methods</h3>
-          <ul className="border border-border divide-y divide-border">
-            {data.providers.map((p) => (
-              <li key={p} className="flex items-center gap-3 px-4 py-3">
-                <span className="size-2 rounded-full bg-emerald-500 shrink-0" />
-                <span className="text-sm text-foreground capitalize">{p === 'siwe' ? 'Wallet (SIWE)' : p}</span>
-              </li>
-            ))}
-            {data.providers.length === 0 && (
-              <li className="px-4 py-3 text-sm text-muted-foreground">No providers linked.</li>
-            )}
-          </ul>
-        </section>
-      </div>
+        </ul>
+      </section>
 
       {/* ── Activity ──────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
