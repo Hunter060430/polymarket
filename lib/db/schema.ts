@@ -6,6 +6,7 @@ import {
   integer,
   serial,
   unique,
+  date,
   index,
   json,
 } from 'drizzle-orm/pg-core'
@@ -169,6 +170,17 @@ export const preSeasonTaskCompletions = pgTable(
     completedAt: timestamp('completed_at').notNull().defaultNow(),
   },
   (t) => ({ uniq: unique().on(t.userId, t.taskKey) }),
+)
+
+// Daily check-in log — one row per user per UTC date for streak tracking.
+export const preSeasonDailyCheckins = pgTable(
+  'pre_season_daily_checkins',
+  {
+    id:              serial('id').primaryKey(),
+    userId:          text('user_id').notNull(),
+    checkedInDate:   date('checked_in_date').notNull(),
+  },
+  (t) => ({ uniq: unique().on(t.userId, t.checkedInDate) }),
 )
 
 // Tracks which scarce Genesis badges each user has claimed.

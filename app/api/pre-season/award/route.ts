@@ -1,13 +1,11 @@
 // POST /api/pre-season/award
-// Internal route — called by server actions when a user completes a task.
-// Awards points and records the task completion atomically.
+// Called client-side (e.g. after AI analysis) to award tasks that cannot be
+// triggered server-side. All logic is delegated to pre-season-server helpers.
 
-import { db } from '@/lib/db'
-import { preSeasonPoints, preSeasonTaskCompletions } from '@/lib/db/schema'
-import { TASKS } from '@/lib/pre-season'
 import { auth } from '@/lib/auth'
-import { and, eq, sql } from 'drizzle-orm'
 import { headers } from 'next/headers'
+import { awardAiAnalysisTasks, grantOneTimeTask } from '@/lib/pre-season-server'
+import { TASKS } from '@/lib/pre-season'
 
 export const runtime = 'nodejs'
 
@@ -26,38 +24,12 @@ export async function POST(req: Request) {
 
   const userId = session.user.id
 
-  // Check if already completed (for non-repeatable tasks)
-  if (!task.repeatable) {
-    const existing = await db
-      .select({ id: preSeasonTaskCompletions.id })
-      .from(preSeasonTaskCompletions)
-      .where(and(
-        eq(preSeasonTaskCompletions.userId, userId),
-        eq(preSeasonTaskCompletions.taskKey, taskKey),
-      ))
-
-    if (existing.length > 0) {
-      return Response.json({ alreadyAwarded: true, points: 0 })
-    }
+  // AI analysis triggers both the one-time milestones and repeatable bonus
+  if (taskKey === 'run_ai_analysis') {
+    await awardAiAnalysisTasks(userId)
+  } else {
+    await grantOneTimeTask(userId, taskKey)
   }
 
-  // Record completion
-  await db.insert(preSeasonTaskCompletions).values({
-    userId,
-    taskKey,
-  }).onConflictDoNothing()
-
-  // Upsert points
-  await db
-    .insert(preSeasonPoints)
-    .values({ userId, points: task.points })
-    .onConflictDoUpdate({
-      target: preSeasonPoints.userId,
-      set: {
-        points: sql`${preSeasonPoints.points} + ${task.points}`,
-        updatedAt: new Date(),
-      },
-    })
-
-  return Response.json({ awarded: true, points: task.points, taskKey })
+  return Response.json({ ok: true, taskKey })
 }

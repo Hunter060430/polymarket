@@ -6,8 +6,10 @@ import { db } from '@/lib/db'
 import { preSeasonPoints, preSeasonTaskCompletions, user } from '@/lib/db/schema'
 import { auth } from '@/lib/auth'
 import { TASKS, GENESIS_BADGES, getBadgeEligibility } from '@/lib/pre-season'
-import { and, eq, desc, sql } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { headers } from 'next/headers'
+import { awardDailyCheckin } from '@/lib/pre-season-server'
+import { grantOneTimeTask } from '@/lib/pre-season-server'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,36 +23,11 @@ export async function GET() {
 
   const userId = session.user.id
 
-  // Auto-award one-time onboarding tasks silently
-  async function autoAward(taskKey: string, pointsAmt: number) {
-    try {
-      const already = await db
-        .select()
-        .from(preSeasonTaskCompletions)
-        .where(and(
-          eq(preSeasonTaskCompletions.userId, userId),
-          eq(preSeasonTaskCompletions.taskKey, taskKey),
-        ))
-      if (already.length > 0) return
-      await db.insert(preSeasonTaskCompletions).values({ userId, taskKey }).onConflictDoNothing()
-      await db
-        .insert(preSeasonPoints)
-        .values({ userId, points: pointsAmt })
-        .onConflictDoUpdate({
-          target: preSeasonPoints.userId,
-          set: { points: sql`${preSeasonPoints.points} + ${pointsAmt}`, updatedAt: new Date() },
-        })
-    } catch { /* silent */ }
-  }
-
-  // first_sign_in — awarded on every GET /me hit when not yet completed
-  await autoAward('first_sign_in', 20)
-  // complete_profile — awarded if the user has set a username (query DB directly
-  // since Better Auth doesn't expose custom fields in the session object)
+  // Auto-award onboarding tasks + daily check-in
+  await grantOneTimeTask(userId, 'first_sign_in')
   const [userRow] = await db.select({ username: user.username }).from(user).where(eq(user.id, userId))
-  if (userRow?.username) {
-    await autoAward('complete_profile', 50)
-  }
+  if (userRow?.username) await grantOneTimeTask(userId, 'complete_profile')
+  await awardDailyCheckin(userId)
 
   // Points row
   const [pointsRow] = await db
@@ -82,10 +59,17 @@ export async function GET() {
 
   const eligibleBadges = getBadgeEligibility(points, completedKeys, Number(regRank))
 
+  // Count completions per task key (needed for repeatable tasks)
+  const completionCounts: Record<string, number> = {}
+  for (const c of completions) {
+    completionCounts[c.taskKey] = (completionCounts[c.taskKey] ?? 0) + 1
+  }
+
   // Task progress with definition merged in
   const taskProgress = TASKS.map(task => ({
     ...task,
-    completed: completedKeys.includes(task.key),
+    completed: !task.repeatable && completedKeys.includes(task.key),
+    completionCount: completionCounts[task.key] ?? 0,
   }))
 
   return Response.json({
