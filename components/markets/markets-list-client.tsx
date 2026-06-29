@@ -174,10 +174,10 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
           />
         </div>
 
-        {/* Selects */}
-        <div className="flex gap-2 flex-wrap">
+        {/* Selects — 2-column grid on mobile, single row on sm+ */}
+        <div className="grid grid-cols-2 sm:flex gap-2 sm:flex-wrap">
           <Select value={riskFilter} onValueChange={(v) => v && handleRiskChange(v)}>
-            <SelectTrigger className="w-[calc(50%-4px)] sm:w-36 text-xs h-8 bg-background border-border" aria-label="Risk level filter">
+            <SelectTrigger className="w-full sm:w-36 text-xs h-8 bg-background border-border" aria-label="Risk level filter">
               <SelectValue placeholder="Risk level" />
             </SelectTrigger>
             <SelectContent>
@@ -192,7 +192,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
 
           {categories.length > 0 && (
             <Select value={category} onValueChange={(v) => v && handleCategoryChange(v)}>
-              <SelectTrigger className="w-[calc(50%-4px)] sm:w-36 text-xs h-8 bg-background border-border" aria-label="Category filter">
+              <SelectTrigger className="w-full sm:w-36 text-xs h-8 bg-background border-border" aria-label="Category filter">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
@@ -205,7 +205,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
           )}
 
           <Select value={minVolume} onValueChange={(v) => v && handleMinvolChange(v)}>
-            <SelectTrigger className="w-[calc(50%-4px)] sm:w-32 text-xs h-8 bg-background border-border" aria-label="Minimum volume">
+            <SelectTrigger className="w-full sm:w-32 text-xs h-8 bg-background border-border" aria-label="Minimum volume">
               <SelectValue placeholder="Min volume" />
             </SelectTrigger>
             <SelectContent>

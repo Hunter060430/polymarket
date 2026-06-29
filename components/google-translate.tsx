@@ -1,113 +1,131 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Languages } from 'lucide-react'
-import Script from 'next/script'
+import { Languages, ChevronDown, Check } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-// Extend window for the Google Translate init callback
-declare global {
-  interface Window {
-    googleTranslateElementInit?: () => void
-    google?: {
-      translate: {
-        TranslateElement: new (
-          opts: { pageLanguage: string; includedLanguages?: string; layout?: number; autoDisplay?: boolean },
-          id: string,
-        ) => void
-      }
-    }
+// Language list — label shown in the dropdown, value is the Google Translate
+// language code written into the googtrans cookie.
+const LANGUAGES = [
+  { label: 'English',             value: 'en'    },
+  { label: '简体中文',              value: 'zh-CN' },
+  { label: '繁體中文',              value: 'zh-TW' },
+  { label: '日本語',               value: 'ja'    },
+  { label: '한국어',               value: 'ko'    },
+  { label: 'Español',             value: 'es'    },
+  { label: 'Português',           value: 'pt'    },
+  { label: 'Français',            value: 'fr'    },
+  { label: 'Deutsch',             value: 'de'    },
+  { label: 'العربية',              value: 'ar'    },
+  { label: 'Türkçe',              value: 'tr'    },
+  { label: 'Русский',             value: 'ru'    },
+  { label: 'Tiếng Việt',          value: 'vi'    },
+  { label: 'ภาษาไทย',             value: 'th'    },
+  { label: 'Bahasa Indonesia',    value: 'id'    },
+]
+
+function setGoogleTranslateCookie(lang: string) {
+  // Google Translate reads the /en/<lang> value from the googtrans cookie.
+  // Setting it on / makes it apply site-wide; expires in 1 year.
+  const value  = lang === 'en' ? '' : `/en/${lang}`
+  const domain = window.location.hostname
+  const expiry = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString()
+  // Set on current domain
+  document.cookie = `googtrans=${value}; expires=${expiry}; path=/`
+  // Also set on .domain (Google requires both forms)
+  document.cookie = `googtrans=${value}; expires=${expiry}; path=/; domain=${domain}`
+  document.cookie = `googtrans=${value}; expires=${expiry}; path=/; domain=.${domain}`
+  // Reload triggers Google Translate to pick up the new cookie
+  window.location.reload()
+}
+
+function getCurrentLang(): string {
+  try {
+    const match = document.cookie.match(/(?:^|;\s*)googtrans=\/en\/([^;]+)/)
+    return match ? match[1] : 'en'
+  } catch {
+    return 'en'
   }
 }
 
 export function GoogleTranslate() {
-  const [open, setOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const widgetRef    = useRef<HTMLDivElement>(null)
-  const initialized  = useRef(false)
+  const [open, setOpen]       = useState(false)
+  const [current, setCurrent] = useState('en')
+  const containerRef          = useRef<HTMLDivElement>(null)
 
-  // Close dropdown when clicking outside
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
+    setCurrent(getCurrentLang())
+  }, [])
+
+  // Close on outside click
+  useEffect(() => {
+    function onOutside(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false)
       }
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener('mousedown', onOutside)
+    return () => document.removeEventListener('mousedown', onOutside)
   }, [])
 
-  // Init the widget once the Google Translate script is loaded
-  function initWidget() {
-    if (initialized.current) return
-    if (!window.google?.translate?.TranslateElement) return
-    initialized.current = true
-    window.googleTranslateElementInit = () => {}
-    new window.google.translate.TranslateElement(
-      {
-        pageLanguage: 'en',
-        // Curated languages — covers the majority of Polymarket's global user base
-        includedLanguages: 'en,zh-CN,zh-TW,ja,ko,es,pt,fr,de,ar,tr,ru,vi,th,id',
-        autoDisplay: false,
-      },
-      'google-translate-widget',
-    )
+  // Close on Escape
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
+
+  const currentLabel = LANGUAGES.find((l) => l.value === current)?.label ?? 'EN'
+
+  function handleSelect(value: string) {
+    setOpen(false)
+    if (value !== current) {
+      setGoogleTranslateCookie(value)
+    }
   }
 
   return (
-    <>
-      {/* Load Google Translate script — defer until after interaction for perf */}
-      <Script
-        src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"
-        strategy="lazyOnload"
-        onLoad={initWidget}
-      />
+    <div ref={containerRef} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Translate page"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        className="inline-flex items-center justify-center gap-1 h-9 px-2 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors text-xs"
+      >
+        <Languages className="size-4 shrink-0" aria-hidden="true" />
+        <span className="hidden sm:inline tracking-wide">{current === 'en' ? 'EN' : currentLabel.slice(0, 6)}</span>
+        <ChevronDown className={cn('size-3 shrink-0 transition-transform', open && 'rotate-180')} aria-hidden="true" />
+      </button>
 
-      <div ref={containerRef} className="relative">
-        {/* Trigger button — matches the style of ThemeToggle / UserMenu */}
-        <button
-          onClick={() => setOpen((v) => !v)}
-          aria-label="Translate page"
-          aria-expanded={open}
-          className="inline-flex items-center justify-center size-9 rounded-none text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+      {open && (
+        <div
+          role="listbox"
+          aria-label="Select language"
+          className="absolute right-0 top-full mt-1 z-50 bg-background border border-border shadow-lg py-1 min-w-[180px] max-h-72 overflow-y-auto"
         >
-          <Languages className="size-4" aria-hidden="true" />
-        </button>
-
-        {/* Dropdown shell */}
-        {open && (
-          <div
-            ref={widgetRef}
-            className="absolute right-0 top-full mt-1 z-50 bg-background border border-border shadow-lg p-3 min-w-[220px]"
-          >
-            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2 font-medium">
-              Translate page
-            </p>
-            {/* Google injects its language selector here */}
-            <div id="google-translate-widget" />
-          </div>
-        )}
-      </div>
-
-      {/* Suppress Google's injected top banner and override widget styles */}
-      <style>{`
-        .goog-te-banner-frame,
-        #goog-gt-tt,
-        .goog-te-balloon-frame { display: none !important; }
-        body { top: 0 !important; }
-        .goog-te-gadget { font-size: 0 !important; }
-        .goog-te-gadget select {
-          font-size: 0.75rem !important;
-          padding: 4px 8px !important;
-          border: 1px solid hsl(var(--border)) !important;
-          background: hsl(var(--background)) !important;
-          color: hsl(var(--foreground)) !important;
-          border-radius: 0 !important;
-          outline: none !important;
-          width: 100% !important;
-          cursor: pointer;
-        }
-        .goog-te-gadget .goog-te-gadget-simple { display: none !important; }
-      `}</style>
-    </>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest px-3 pt-2 pb-1 font-medium select-none">
+            Page language
+          </p>
+          {LANGUAGES.map((lang) => (
+            <button
+              key={lang.value}
+              role="option"
+              aria-selected={lang.value === current}
+              onClick={() => handleSelect(lang.value)}
+              className={cn(
+                'w-full flex items-center justify-between px-3 py-2 text-sm text-left transition-colors hover:bg-secondary/50',
+                lang.value === current ? 'text-foreground font-medium' : 'text-muted-foreground',
+              )}
+            >
+              {lang.label}
+              {lang.value === current && <Check className="size-3.5 shrink-0" aria-hidden="true" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
