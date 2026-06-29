@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { authClient, signIn } from '@/lib/auth-client'
-import { Loader2, Wallet } from 'lucide-react'
+import { signIn } from '@/lib/auth-client'
+import { WalletButton } from '@/components/auth/wallet-button'
+import { Loader2 } from 'lucide-react'
+
 
 function GoogleIcon() {
   return (
@@ -19,102 +21,17 @@ function GoogleIcon() {
 export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState<null | 'google' | 'wallet'>(null)
+  const [loading, setLoading] = useState(false)
 
   // ── Google ──────────────────────────────────────────────────────────────
   async function handleGoogle() {
     setError(null)
-    setLoading('google')
+    setLoading(true)
     try {
       await signIn.social({ provider: 'google', callbackURL: '/' })
-      // Google redirects away; loading spinner stays until redirect.
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Google sign-in failed.')
-      setLoading(null)
-    }
-  }
-
-  // ── Wallet (SIWE) ───────────────────────────────────────────────────────
-  async function handleWallet() {
-    setError(null)
-    setLoading('wallet')
-    try {
-      type EthProvider = {
-        request: (a: { method: string; params?: unknown[] }) => Promise<unknown>
-      }
-      const eth = (window as unknown as { ethereum?: EthProvider }).ethereum
-      if (!eth) {
-        throw new Error(
-          'No Ethereum wallet detected. Please install MetaMask or a compatible wallet extension.',
-        )
-      }
-
-      // 1. Request wallet access
-      const accounts = (await eth.request({ method: 'eth_requestAccounts' })) as string[]
-      const address = accounts[0]
-      if (!address) throw new Error('No wallet account selected.')
-
-      const chainIdHex = (await eth.request({ method: 'eth_chainId' })) as string
-      const chainId = parseInt(chainIdHex, 16)
-
-      // 2. Get nonce + the server's expected domain in parallel.
-      //    The server validates parsedMessage.domain === options.domain, so we
-      //    must use the server's value — not window.location.host which differs
-      //    inside v0 preview iframes.
-      const [nonceRes, domainRes] = await Promise.all([
-        authClient.siwe.getNonce({
-          walletAddress: address as `0x${string}`,
-          chainId,
-        }),
-        fetch('/api/auth/siwe/domain').then(r => r.json() as Promise<{ domain: string }>),
-      ])
-      if (nonceRes.error) {
-        throw new Error(`Could not get nonce: ${nonceRes.error.message}`)
-      }
-      const nonce = (nonceRes.data as { nonce: string }).nonce
-      const domain = domainRes.domain
-
-      console.log('[v0] SIWE nonce:', nonce, '| domain from server:', domain)
-
-      // 3. Build EIP-4361 SIWE message
-      const uri = `https://${domain}`
-      const issuedAt = new Date().toISOString()
-      const message =
-        `${domain} wants you to sign in with your Ethereum account:\n` +
-        `${address}\n\n` +
-        `Sign in to Verdict.\n\n` +
-        `URI: ${uri}\n` +
-        `Version: 1\n` +
-        `Chain ID: ${chainId}\n` +
-        `Nonce: ${nonce}\n` +
-        `Issued At: ${issuedAt}`
-
-      console.log('[v0] SIWE message built:\n', message)
-
-      // 4. Request signature
-      const signature = (await eth.request({
-        method: 'personal_sign',
-        params: [message, address],
-      })) as string
-
-      // 5. Verify + create session — POST to same-origin auth endpoint
-      const verifyRes = await authClient.$fetch('/siwe/verify', {
-        method: 'POST',
-        body: { message, signature, walletAddress: address, chainId },
-        credentials: 'include',
-      })
-      if (verifyRes.error) {
-        throw new Error(
-          (verifyRes.error as { message?: string }).message ?? 'Signature rejected by server.',
-        )
-      }
-
-      // 6. Success
-      router.push('/')
-      router.refresh()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Wallet sign-in failed.')
-      setLoading(null)
+      setLoading(false)
     }
   }
 
@@ -130,10 +47,10 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
       <div className="flex flex-col gap-3">
         <button
           onClick={handleGoogle}
-          disabled={loading !== null}
+          disabled={loading}
           className="inline-flex items-center justify-center gap-2.5 border border-border px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors disabled:opacity-50"
         >
-          {loading === 'google' ? (
+          {loading ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
             <GoogleIcon />
@@ -141,18 +58,8 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
           Continue with Google
         </button>
 
-        <button
-          onClick={handleWallet}
-          disabled={loading !== null}
-          className="inline-flex items-center justify-center gap-2.5 border border-border px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors disabled:opacity-50"
-        >
-          {loading === 'wallet' ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Wallet className="size-4" aria-hidden="true" />
-          )}
-          Continue with Wallet
-        </button>
+        {/* Wallet: RainbowKit-free but Wagmi-powered connector picker + SIWE */}
+        <WalletButton />
       </div>
 
       {error && (
