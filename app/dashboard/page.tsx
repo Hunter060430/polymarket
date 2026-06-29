@@ -1,4 +1,7 @@
-export const dynamic = 'force-dynamic'
+// Revalidate every 60 s — ISR keeps the page fast while data stays fresh.
+// Do NOT use force-dynamic: it bypasses all caches and causes every request
+// to run the full 500-market Polymarket crawl in the request path.
+export const revalidate = 60
 
 import { Suspense } from 'react'
 import { Nav, PageFooter } from '@/components/nav'

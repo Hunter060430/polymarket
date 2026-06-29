@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic'
+export const revalidate = 120
 
 import { Suspense } from 'react'
 import { Nav, PageFooter } from '@/components/nav'
