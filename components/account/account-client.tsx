@@ -6,9 +6,8 @@ import { useRouter } from 'next/navigation'
 import { signOut } from '@/lib/auth-client'
 import { updateDisplayName } from '@/app/actions/account'
 import type { AccountData } from '@/app/actions/account'
-import { Pencil, Check, X, LogOut, Wallet, MessageSquare, BarChart2, ExternalLink, Zap, Trophy, Shield, ArrowRight } from 'lucide-react'
+import { Pencil, Check, X, LogOut, Wallet, BarChart2, ExternalLink, Zap, Trophy, Shield, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { ReputationBadge } from '@/components/reputation-badge'
 import { TASKS } from '@/lib/pre-season'
 
 const RISK_COLORS: Record<string, string> = {
@@ -96,12 +95,6 @@ export function AccountClient({ data }: { data: AccountData }) {
           {/* Display name (from OAuth / wallet, read-only) */}
           <div className="flex items-center gap-2 mb-0.5">
             <h2 className="text-lg font-semibold text-foreground truncate">{data.name}</h2>
-            <ReputationBadge
-              badge={data.reputation?.badge ?? 'Observer'}
-              score={data.reputation?.score}
-              size="sm"
-              showScore
-            />
           </div>
 
           {/* Username (unique, editable) */}
@@ -153,12 +146,8 @@ export function AccountClient({ data }: { data: AccountData }) {
         </button>
       </div>
 
-      {/* ── Stats ─────────────────────────────────────── */}
-      <div className="grid grid-cols-3 border border-border divide-x divide-border">
-        <Stat icon={<MessageSquare className="size-4" />} label="Comments" value={data.recentComments.length} max={10} note="last 10" />
-        <Stat icon={<BarChart2 className="size-4" />}    label="Risk Votes" value={data.recentVotes.length}   max={10} note="last 10" />
-        <Stat icon={<Wallet className="size-4" />}       label="Wallets"    value={data.wallets.length}        max={null} note="" />
-      </div>
+      {/* ── Pre-Season point stats ────────────────────── */}
+      <PreSeasonStatsRow />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
@@ -261,7 +250,115 @@ export function AccountClient({ data }: { data: AccountData }) {
           )}
         </section>
       </div>
+
+      {/* ── Pre-Season completed tasks ─────────────────── */}
+      <CompletedTasksList />
     </div>
+  )
+}
+
+// Inline stats row — points / rank / tasks / badges — shown instead of old Observer stats
+function PreSeasonStatsRow() {
+  const [data, setData] = useState<{
+    points: number
+    rank: number
+    completedKeys: string[]
+    eligibleBadges: { key: string; name: string }[]
+  } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/pre-season/me')
+      .then(r => r.json())
+      .then(d => setData(d))
+      .catch(() => {})
+  }, [])
+
+  const totalTasks = TASKS.length
+  const completed = data?.completedKeys.length ?? 0
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 border border-border divide-x divide-border divide-y sm:divide-y-0">
+      <div className="flex flex-col items-center justify-center gap-1 px-4 py-5">
+        <Zap className="size-4 text-primary" aria-hidden="true" />
+        <span className="text-2xl font-semibold text-foreground tabular-nums">
+          {data ? data.points.toLocaleString() : '—'}
+        </span>
+        <span className="text-xs text-muted-foreground">Pre-Season Pts</span>
+      </div>
+      <div className="flex flex-col items-center justify-center gap-1 px-4 py-5">
+        <Trophy className="size-4 text-muted-foreground" aria-hidden="true" />
+        <span className="text-2xl font-semibold text-foreground tabular-nums">
+          {data ? `#${data.rank}` : '—'}
+        </span>
+        <span className="text-xs text-muted-foreground">Leaderboard Rank</span>
+      </div>
+      <div className="flex flex-col items-center justify-center gap-1 px-4 py-5">
+        <BarChart2 className="size-4 text-muted-foreground" aria-hidden="true" />
+        <span className="text-2xl font-semibold text-foreground tabular-nums">
+          {data ? `${completed}/${totalTasks}` : '—'}
+        </span>
+        <span className="text-xs text-muted-foreground">Tasks Done</span>
+      </div>
+      <div className="flex flex-col items-center justify-center gap-1 px-4 py-5">
+        <Shield className="size-4 text-muted-foreground" aria-hidden="true" />
+        <span className="text-2xl font-semibold text-foreground tabular-nums">
+          {data ? data.eligibleBadges.length : '—'}
+        </span>
+        <span className="text-xs text-muted-foreground">Genesis Badges</span>
+      </div>
+    </div>
+  )
+}
+
+// Completed tasks list — shows which pre-season tasks the user has earned and how many points
+function CompletedTasksList() {
+  const [data, setData] = useState<{
+    completedKeys: string[]
+  } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/pre-season/me')
+      .then(r => r.json())
+      .then(d => setData(d))
+      .catch(() => {})
+  }, [])
+
+  const completedTasks = TASKS.filter(t => data?.completedKeys.includes(t.key))
+  const pendingTasks   = TASKS.filter(t => !data?.completedKeys.includes(t.key))
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-xs tracking-[0.1em] uppercase text-muted-foreground">Pre-Season Tasks</h3>
+        <Link href="/pre-season" className="text-xs text-primary hover:opacity-70 transition-opacity inline-flex items-center gap-1">
+          View all
+          <ArrowRight className="size-3" aria-hidden="true" />
+        </Link>
+      </div>
+      <ul className="border border-border divide-y divide-border">
+        {completedTasks.map(task => (
+          <li key={task.key} className="flex items-center justify-between px-4 py-3 gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="size-1.5 rounded-full bg-primary shrink-0" />
+              <span className="text-sm text-foreground truncate">{task.title}</span>
+            </div>
+            <span className="text-xs font-semibold text-primary tabular-nums shrink-0">+{task.points} pts</span>
+          </li>
+        ))}
+        {pendingTasks.slice(0, 3).map(task => (
+          <li key={task.key} className="flex items-center justify-between px-4 py-3 gap-3 opacity-40">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="size-1.5 rounded-full border border-muted-foreground shrink-0" />
+              <span className="text-sm text-muted-foreground truncate">{task.title}</span>
+            </div>
+            <span className="text-xs text-muted-foreground tabular-nums shrink-0">{task.points} pts</span>
+          </li>
+        ))}
+        {!data && (
+          <li className="px-4 py-5 text-center text-sm text-muted-foreground">Loading tasks…</li>
+        )}
+      </ul>
+    </section>
   )
 }
 
@@ -341,23 +438,4 @@ function PreSeasonCard() {
   )
 }
 
-function Stat({
-  icon, label, value, max, note,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: number
-  max: number | null
-  note: string
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-1 px-4 py-5">
-      <div className="text-muted-foreground">{icon}</div>
-      <span className="text-2xl font-semibold text-foreground tabular-nums">
-        {value}{max && value >= max ? '+' : ''}
-      </span>
-      <span className="text-xs text-muted-foreground">{label}</span>
-      {note && <span className="text-[10px] text-muted-foreground/60">{note}</span>}
-    </div>
-  )
-}
+
