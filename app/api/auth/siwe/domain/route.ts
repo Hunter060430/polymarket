@@ -21,5 +21,7 @@ function getExpectedDomain(): string {
 }
 
 export async function GET() {
-  return Response.json({ domain: getExpectedDomain() })
+  const domain = getExpectedDomain()
+  console.log('[v0] /api/auth/siwe/domain returning:', domain, '| BETTER_AUTH_URL:', process.env.BETTER_AUTH_URL)
+  return Response.json({ domain })
 }

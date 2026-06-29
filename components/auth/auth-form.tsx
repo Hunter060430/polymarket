@@ -74,6 +74,8 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
       const nonce = (nonceRes.data as { nonce: string }).nonce
       const domain = domainRes.domain
 
+      console.log('[v0] SIWE nonce:', nonce, '| domain from server:', domain)
+
       // 3. Build EIP-4361 SIWE message
       const uri = `https://${domain}`
       const issuedAt = new Date().toISOString()
@@ -86,6 +88,8 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         `Chain ID: ${chainId}\n` +
         `Nonce: ${nonce}\n` +
         `Issued At: ${issuedAt}`
+
+      console.log('[v0] SIWE message built:\n', message)
 
       // 4. Request signature
       const signature = (await eth.request({

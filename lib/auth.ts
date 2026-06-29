@@ -16,17 +16,22 @@ const baseURL =
       : 'http://localhost:3000')
 
 // SIWE domain must be the canonical production domain (ver.watch).
-// This is what users sign — it never changes regardless of environment.
-const siweDomainURL =
+// Parentheses are required — without them ?? and ternary precedence
+// causes siweDomainURL to become "https://undefined".
+const siweDomainURL = (
   process.env.BETTER_AUTH_URL ??
-  process.env.VERCEL_PROJECT_PRODUCTION_URL
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : 'http://localhost:3000'
+    : 'http://localhost:3000')
+)
 
 function getDomain(): string {
   try {
-    return new URL(siweDomainURL!).host
+    const host = new URL(siweDomainURL).host
+    console.log('[v0] SIWE getDomain ->', host, '| siweDomainURL:', siweDomainURL)
+    return host
   } catch {
+    console.log('[v0] SIWE getDomain fallback, siweDomainURL was:', siweDomainURL)
     return 'localhost:3000'
   }
 }
