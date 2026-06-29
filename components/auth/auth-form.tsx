@@ -57,19 +57,25 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
       const chainIdHex = (await eth.request({ method: 'eth_chainId' })) as string
       const chainId = parseInt(chainIdHex, 16)
 
-      // 2. Get nonce from Better Auth (same-origin fetch — baseURL = window.location.origin)
-      const nonceRes = await authClient.siwe.getNonce({
-        walletAddress: address as `0x${string}`,
-        chainId,
-      })
+      // 2. Get nonce + the server's expected domain in parallel.
+      //    The server validates parsedMessage.domain === options.domain, so we
+      //    must use the server's value — not window.location.host which differs
+      //    inside v0 preview iframes.
+      const [nonceRes, domainRes] = await Promise.all([
+        authClient.siwe.getNonce({
+          walletAddress: address as `0x${string}`,
+          chainId,
+        }),
+        fetch('/api/auth/siwe/domain').then(r => r.json() as Promise<{ domain: string }>),
+      ])
       if (nonceRes.error) {
         throw new Error(`Could not get nonce: ${nonceRes.error.message}`)
       }
       const nonce = (nonceRes.data as { nonce: string }).nonce
+      const domain = domainRes.domain
 
       // 3. Build EIP-4361 SIWE message
-      const domain = window.location.host
-      const uri = window.location.origin
+      const uri = `https://${domain}`
       const issuedAt = new Date().toISOString()
       const message =
         `${domain} wants you to sign in with your Ethereum account:\n` +
