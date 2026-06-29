@@ -7,6 +7,7 @@ import { and, desc, eq, sql } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { upsertReputation } from '@/lib/reputation'
+import { awardCommentTasks, awardVoteTasks, awardUpvoteTasks } from '@/lib/pre-season-server'
 
 async function getSession() {
   return auth.api.getSession({ headers: await headers() })
@@ -132,6 +133,7 @@ export async function postComment(
 
   await db.insert(marketComment).values({ marketId, userId, body: trimmed })
   void upsertReputation(userId, 'comment')
+  void awardCommentTasks(userId)
   revalidatePath(`/markets/${marketId}`)
   return { ok: true }
 }
@@ -167,6 +169,13 @@ export async function toggleCommentUpvote(commentId: number, marketId: string) {
       .update(marketComment)
       .set({ upvotes: sql`${marketComment.upvotes} + 1` })
       .where(eq(marketComment.id, commentId))
+
+    // Award comment owner for receiving upvotes
+    const [commented] = await db
+      .select({ userId: marketComment.userId })
+      .from(marketComment)
+      .where(eq(marketComment.id, commentId))
+    if (commented) void awardUpvoteTasks(commented.userId)
   }
   revalidatePath(`/markets/${marketId}`)
 }
@@ -276,6 +285,7 @@ export async function castRiskVote(
     })
 
   void upsertReputation(userId, 'vote')
+  void awardVoteTasks(userId)
   revalidatePath(`/markets/${marketId}`)
   return { ok: true }
 }
