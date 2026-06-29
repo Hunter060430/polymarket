@@ -26,11 +26,10 @@ export async function fetchPolymarketEventsPage(offset: number): Promise<Polymar
     const res = await fetch(url.toString(), {
       signal: controller.signal,
       headers: { Accept: 'application/json' },
-      // Each page is 8-12MB, which exceeds Next.js's 2MB data-cache limit, so
-      // we don't attempt to cache at the fetch layer (it would just fail and
-      // log noise). Caching is handled by the in-memory layer in
-      // fetchAllActivePolymarketMarkets.
-      cache: 'no-store',
+      // Use next.revalidate so Next.js can serve from its fetch cache between
+      // in-memory cache misses. The 2MB item limit only applies to data passed
+      // to unstable_cache, not to the fetch cache itself.
+      next: { revalidate: 300 },
     })
     clearTimeout(timeoutId)
 
@@ -233,7 +232,7 @@ async function _fetchAllActivePolymarketMarkets(): Promise<NormalizedMarket[]> {
 // in-flight de-duplication, so concurrent renders share a single crawl and
 // repeat requests within the window are instant. The underlying per-page
 // fetches still carry `next: { revalidate: 300 }` as a second layer.
-const ACTIVE_TTL_MS = 5 * 60 * 1000
+const ACTIVE_TTL_MS = 10 * 60 * 1000
 let activeCache: { data: NormalizedMarket[]; expires: number } | null = null
 let activeInflight: Promise<NormalizedMarket[]> | null = null
 
@@ -333,7 +332,7 @@ async function fetchResolvedEventsPage(offset: number): Promise<PolymarketEvent[
     const res = await fetch(url.toString(), {
       signal:  controller.signal,
       headers: { Accept: 'application/json' },
-      cache:   'no-store',   // page payload exceeds 2MB cache limit; cached in-memory instead
+      next:    { revalidate: 600 },
     })
     clearTimeout(timeoutId)
     if (!res.ok) throw new Error(`Gamma API responded with ${res.status} at offset ${offset}`)

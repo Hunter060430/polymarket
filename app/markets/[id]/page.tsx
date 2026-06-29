@@ -32,39 +32,32 @@ async function getMarketAndRelated(id: string): Promise<{
   market: NormalizedMarket | null
   related: NormalizedMarket[]
 }> {
-  // Primary: fast single-market fetch
-  let market = await fetchMarketById(id)
+  // Fetch the single market and the full list concurrently — the full list is
+  // served from the in-memory cache (warm after first dashboard visit) so this
+  // effectively costs nothing extra. Only ONE call to fetchAllActivePolymarketMarkets.
+  const [market, allMarkets] = await Promise.all([
+    fetchMarketById(id),
+    fetchAllActivePolymarketMarkets(),
+  ])
 
-  // Fallback: scan full list in case the ID is a conditionId or the single
-  // API returned null (e.g. market moved to resolved state)
-  if (!market) {
-    const allMarkets = await fetchAllActivePolymarketMarkets()
-    market = allMarkets.find(
+  // Resolve via conditionId / slug if the direct fetch returned null
+  const resolved: NormalizedMarket | null = market ??
+    allMarkets.find(
       (m) => m.marketId === id || m.conditionId === id || m.marketSlug === id
     ) ?? null
-  }
 
-  if (!market) return { market: null, related: [] }
+  if (!resolved) return { market: null, related: [] }
 
-  // Related: same category pool (up to 50) for similarity matching.
-  // Falls back to full list if category is missing or yields too few results.
-  const allMarkets = await fetchAllActivePolymarketMarkets()
+  // Related: same category pool, fall back to same risk level if too small
   const sameCategory = allMarkets.filter(
-    (m) =>
-      m.marketId !== market!.marketId &&
-      m.eventCategory &&
-      m.eventCategory === market!.eventCategory,
+    (m) => m.marketId !== resolved.marketId && m.eventCategory === resolved.eventCategory
   )
-  // If same-category pool is too small, fall back to same risk level — never
-  // use the entire unfiltered list which causes completely unrelated matches.
   const fallbackPool = allMarkets.filter(
-    (m) =>
-      m.marketId !== market!.marketId &&
-      m.score.riskLevel === market!.score.riskLevel,
+    (m) => m.marketId !== resolved.marketId && m.score.riskLevel === resolved.score.riskLevel
   )
   const related = (sameCategory.length >= 5 ? sameCategory : fallbackPool).slice(0, 50)
 
-  return { market, related }
+  return { market: resolved, related }
 }
 
 export async function generateMetadata({
