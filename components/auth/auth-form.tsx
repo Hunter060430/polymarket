@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { signIn } from '@/lib/auth-client'
+import { authClient, signIn } from '@/lib/auth-client'
 import { Loader2, Wallet } from 'lucide-react'
 
 function GoogleIcon() {
@@ -39,15 +39,14 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     setError(null)
     setLoading('wallet')
     try {
-      const eth = (
-        window as unknown as {
-          ethereum?: {
-            request: (a: { method: string; params?: unknown[] }) => Promise<unknown>
-          }
-        }
-      ).ethereum
+      type EthProvider = {
+        request: (a: { method: string; params?: unknown[] }) => Promise<unknown>
+      }
+      const eth = (window as unknown as { ethereum?: EthProvider }).ethereum
       if (!eth) {
-        throw new Error('No Ethereum wallet detected. Please install MetaMask or a compatible wallet extension.')
+        throw new Error(
+          'No Ethereum wallet detected. Please install MetaMask or a compatible wallet extension.',
+        )
       }
 
       // 1. Request wallet access
@@ -58,17 +57,15 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
       const chainIdHex = (await eth.request({ method: 'eth_chainId' })) as string
       const chainId = parseInt(chainIdHex, 16)
 
-      // 2. Get nonce
-      const nonceRes = await fetch('/api/auth/siwe/nonce', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress: address, chainId }),
+      // 2. Get nonce from Better Auth (same-origin fetch — baseURL = window.location.origin)
+      const nonceRes = await authClient.siwe.getNonce({
+        walletAddress: address as `0x${string}`,
+        chainId,
       })
-      if (!nonceRes.ok) {
-        const text = await nonceRes.text()
-        throw new Error(`Could not get nonce (${nonceRes.status}): ${text}`)
+      if (nonceRes.error) {
+        throw new Error(`Could not get nonce: ${nonceRes.error.message}`)
       }
-      const { nonce } = (await nonceRes.json()) as { nonce: string }
+      const nonce = (nonceRes.data as { nonce: string }).nonce
 
       // 3. Build EIP-4361 SIWE message
       const domain = window.location.host
@@ -84,27 +81,22 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         `Nonce: ${nonce}\n` +
         `Issued At: ${issuedAt}`
 
-      // 4. Request signature from wallet
+      // 4. Request signature
       const signature = (await eth.request({
         method: 'personal_sign',
         params: [message, address],
       })) as string
 
-      // 5. Verify on server
-      const verifyRes = await fetch('/api/auth/siwe/verify', {
+      // 5. Verify + create session — POST to same-origin auth endpoint
+      const verifyRes = await authClient.$fetch('/siwe/verify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        body: { message, signature, walletAddress: address, chainId },
         credentials: 'include',
-        body: JSON.stringify({ message, signature, walletAddress: address, chainId }),
       })
-      const verifyText = await verifyRes.text()
-      if (!verifyRes.ok) {
-        throw new Error(`Verification failed (${verifyRes.status}): ${verifyText}`)
-      }
-      let result: { success?: boolean; error?: string; token?: string } = {}
-      try { result = JSON.parse(verifyText) } catch { /* non-JSON */ }
-      if (result.success === false) {
-        throw new Error(result.error ?? 'Signature rejected by server.')
+      if (verifyRes.error) {
+        throw new Error(
+          (verifyRes.error as { message?: string }).message ?? 'Signature rejected by server.',
+        )
       }
 
       // 6. Success

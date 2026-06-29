@@ -4,13 +4,17 @@ import { createPublicClient, http } from 'viem'
 import { mainnet } from 'viem/chains'
 import { pool } from '@/lib/db'
 
+// Priority: v0 preview runtime > production URL > fallback
+// BETTER_AUTH_URL is the production domain — in preview/dev the cookie
+// domain must match the actual request origin, so we prefer V0_RUNTIME_URL.
 const baseURL =
+  process.env.V0_RUNTIME_URL ??
   process.env.BETTER_AUTH_URL ??
   (process.env.VERCEL_PROJECT_PRODUCTION_URL
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
     : process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
-      : process.env.V0_RUNTIME_URL)
+      : 'http://localhost:3000')
 
 function getDomain(): string {
   try {
@@ -57,13 +61,15 @@ export const auth = betterAuth({
     }),
   ],
   trustedOrigins: [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    ...(process.env.BETTER_AUTH_URL ? [process.env.BETTER_AUTH_URL] : []),
     ...(process.env.V0_RUNTIME_URL ? [process.env.V0_RUNTIME_URL] : []),
     ...(process.env.VERCEL_URL ? [`https://${process.env.VERCEL_URL}`] : []),
     ...(process.env.VERCEL_PROJECT_PRODUCTION_URL
       ? [`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`]
       : []),
-    // v0 preview iframes and Vercel preview deployments use dynamic subdomains;
-    // wildcard them so auth works across every preview origin.
+    // v0 preview iframes and Vercel preview deployments use dynamic subdomains
     'https://*.vusercontent.net',
     'https://*.vercel.app',
   ],
