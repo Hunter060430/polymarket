@@ -4,15 +4,15 @@
 
 export const dynamic = 'force-dynamic'
 
+// Must mirror the siweDomainURL logic in lib/auth.ts exactly.
+// SIWE domain is always the canonical production domain (ver.watch),
+// never the preview runtime URL.
 function getExpectedDomain(): string {
   const base =
-    process.env.V0_RUNTIME_URL ??
     process.env.BETTER_AUTH_URL ??
     (process.env.VERCEL_PROJECT_PRODUCTION_URL
       ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : 'http://localhost:3000')
+      : 'http://localhost:3000')
   try {
     return new URL(base).host
   } catch {
