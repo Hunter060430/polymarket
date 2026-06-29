@@ -55,6 +55,7 @@ export function PreSeasonClient() {
     fetch('/api/pre-season/me')
       .then(r => r.json())
       .then((d: MeData) => setMe(d))
+      .catch(() => { /* silent — points are best-effort */ })
       .finally(() => setLoading(false))
   }, [session?.user])
 

@@ -31,7 +31,8 @@ export function Leaderboard({ currentUserId }: LeaderboardProps) {
   useEffect(() => {
     fetch('/api/pre-season/leaderboard')
       .then(r => r.json())
-      .then((d: { leaderboard: LeaderboardEntry[] }) => setEntries(d.leaderboard))
+      .then((d: { leaderboard: LeaderboardEntry[] }) => setEntries(d.leaderboard ?? []))
+      .catch(() => setEntries([]))
       .finally(() => setLoading(false))
   }, [])
 
