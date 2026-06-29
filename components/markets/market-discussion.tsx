@@ -10,8 +10,6 @@ import {
   type CommentWithAuthor,
 } from '@/app/actions/community'
 import { MessageSquare, ArrowBigUp, Trash2, Loader2 } from 'lucide-react'
-import { ReputationBadge } from '@/components/reputation-badge'
-import { awardTask } from '@/lib/pre-season-award'
 
 function timeAgo(date: Date): string {
   const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
@@ -59,8 +57,6 @@ export function MarketDiscussion({
       }
       setBody('')
       setHoneypot('')
-      // Award pre-season points (idempotent server-side)
-      awardTask('first_comment')
       // Optimistically prepend
           setComments((prev) => [
         {
@@ -192,7 +188,6 @@ export function MarketDiscussion({
                       </span>
                     )}
                     <span className="text-sm font-medium text-foreground">{display}</span>
-                    <ReputationBadge badge={c.authorBadge} score={c.authorScore} />
                     <span className="text-xs text-muted-foreground">· {timeAgo(c.createdAt)}</span>
                     {isOwner && (
                       <button

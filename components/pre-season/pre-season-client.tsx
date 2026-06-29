@@ -8,7 +8,7 @@ import { TaskBoard } from './task-board'
 import { BadgeGrid } from './badge-grid'
 import { Leaderboard } from './leaderboard'
 import { cn } from '@/lib/utils'
-import { Trophy, Zap, Shield, Clock } from 'lucide-react'
+import { Trophy, Zap, Shield, Clock, Info } from 'lucide-react'
 import Link from 'next/link'
 
 interface MeData {
@@ -149,6 +149,18 @@ export function PreSeasonClient() {
             </Link>
           </div>
         )}
+      </div>
+
+      {/* ── Disclaimer notice ────────────────────────────────────────────── */}
+      <div className="flex items-start gap-2.5 border border-border bg-secondary/10 px-4 py-3 mb-6 text-xs text-muted-foreground leading-relaxed">
+        <Info className="size-3.5 shrink-0 mt-0.5 text-muted-foreground" aria-hidden="true" />
+        <span>
+          Pre-Season points and Genesis badges carry no monetary value and do not guarantee any token, financial reward, or future utility.{' '}
+          <Link href="/pre-season/about" className="text-foreground underline underline-offset-2 hover:opacity-70 transition-opacity">
+            Read the full Pre-Season documentation
+          </Link>
+          {' '}for details.
+        </span>
       </div>
 
       {/* ── Tabs ─────────────────────────────────────────────────────────── */}

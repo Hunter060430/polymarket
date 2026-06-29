@@ -4,7 +4,6 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useSession } from '@/lib/auth-client'
 import { castRiskVote, type RiskTally } from '@/app/actions/community'
-import { awardTask } from '@/lib/pre-season-award'
 import { Users } from 'lucide-react'
 
 type VoteKey = 'low' | 'medium' | 'high' | 'critical'
@@ -51,9 +50,6 @@ export function CommunityRiskVote({
       if (!res.ok) {
         setError(res.error)
         setTally(initialTally)
-      } else {
-        // Award pre-season points (first vote + milestones — idempotent server-side)
-        awardTask('first_risk_vote')
       }
     })
   }
