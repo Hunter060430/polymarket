@@ -1,31 +1,17 @@
-export const revalidate = 60
+// Compare page must NOT pass the full market list through RSC props — doing so
+// serialises ~500 NormalizedMarket objects into the .rsc payload (37 MB) which
+// exceeds Vercel's 19 MB ISR limit. Instead, the client fetches its own data
+// via the /api/markets endpoint so no market data appears in the RSC payload.
+export const dynamic = 'force-dynamic'
 
-import { Suspense } from 'react'
 import { Nav, PageFooter } from '@/components/nav'
 import type { Metadata } from 'next'
 import { CompareClient } from '@/components/compare/compare-client'
-import { AlertCircle } from 'lucide-react'
-import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'
 
 export const metadata: Metadata = {
   title: 'Compare Markets',
   description:
     'Compare up to four Polymarket markets side by side — clarity score, six scoring dimensions, current price, and volume. Built for arbitrage and portfolio decisions.',
-}
-
-async function CompareContent() {
-  try {
-    const markets = await fetchAllActivePolymarketMarkets()
-    return <CompareClient markets={markets} />
-  } catch (err) {
-    return (
-      <div className="flex items-center gap-3 text-sm border border-destructive/40 px-5 py-4 text-destructive">
-        <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-        Failed to load market data:{' '}
-        {err instanceof Error ? err.message : 'Unknown error'}. Please try refreshing.
-      </div>
-    )
-  }
 }
 
 export default function ComparePage() {
@@ -45,9 +31,8 @@ export default function ComparePage() {
           </p>
         </div>
 
-        <Suspense fallback={<div className="text-sm text-muted-foreground">Loading markets…</div>}>
-          <CompareContent />
-        </Suspense>
+        {/* No server data passed — CompareClient fetches /api/markets itself */}
+        <CompareClient />
       </main>
       <PageFooter />
     </div>

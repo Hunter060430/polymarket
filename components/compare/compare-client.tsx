@@ -1,12 +1,15 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import useSWR from 'swr'
 import Link from 'next/link'
-import { Search, X, Plus, ExternalLink } from 'lucide-react'
+import { Search, X, Plus, ExternalLink, Loader2 } from 'lucide-react'
 import { RiskBadge } from '@/components/risk-badge'
 import { DIMENSION_LABELS } from '@/lib/rule-clarity-score'
 import { formatVolume, polymarketUrl, formatPriceChange } from '@/lib/utils'
 import type { NormalizedMarket, RuleClarityBreakdown } from '@/lib/types'
+
+const fetcher = (url: string) => fetch(url).then(r => r.json())
 
 const MAX_COMPARE = 4
 
@@ -22,7 +25,14 @@ function riskColor(level: string): string {
     : 'var(--risk-critical)'
 }
 
-export function CompareClient({ markets }: { markets: NormalizedMarket[] }) {
+export function CompareClient() {
+  const { data, isLoading, error } = useSWR<{ markets: NormalizedMarket[] }>(
+    '/api/markets?limit=500',
+    fetcher,
+    { revalidateOnFocus: false },
+  )
+  const markets: NormalizedMarket[] = data?.markets ?? []
+
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [query, setQuery] = useState('')
 
@@ -38,6 +48,23 @@ export function CompareClient({ markets }: { markets: NormalizedMarket[] }) {
       .filter((m) => m.question.toLowerCase().includes(lower) && !selectedIds.includes(m.marketId))
       .slice(0, 6)
   }, [query, markets, selectedIds])
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground py-8">
+        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+        Loading markets…
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <p className="text-sm text-destructive border-l-2 border-destructive pl-3 py-1">
+        Failed to load markets. Please refresh and try again.
+      </p>
+    )
+  }
 
   const add = (id: string) => {
     if (selectedIds.length >= MAX_COMPARE || selectedIds.includes(id)) return
