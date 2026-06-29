@@ -51,7 +51,17 @@ export function AiAnalysisPanel({ market }: AiAnalysisPanelProps) {
         const res = await fetch('/api/markets/ai-score', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ marketId: market.marketId, question: market.question }),
+          body: JSON.stringify({
+            marketId: market.marketId,
+            question: market.question,
+            description: market.description,
+            resolutionSource: market.resolutionSource,
+            outcomes: market.outcomes,
+            deterministicScore: market.score.totalScore,
+            riskLevel: market.score.riskLevel,
+            scoreBreakdown: market.score.breakdown,
+            scoreFlags: market.score.flags,
+          }),
         })
         if (!res.ok) return
         const data = await res.json() as AiResult
@@ -75,7 +85,7 @@ export function AiAnalysisPanel({ market }: AiAnalysisPanelProps) {
       const res = await fetch('/api/markets/ai-score', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+          body: JSON.stringify({
           marketId: market.marketId,
           question: market.question,
           description: market.description,
@@ -83,6 +93,8 @@ export function AiAnalysisPanel({ market }: AiAnalysisPanelProps) {
           outcomes: market.outcomes,
           deterministicScore: market.score.totalScore,
           riskLevel: market.score.riskLevel,
+          scoreBreakdown: market.score.breakdown,
+          scoreFlags: market.score.flags,
         }),
       })
       if (!res.ok) {

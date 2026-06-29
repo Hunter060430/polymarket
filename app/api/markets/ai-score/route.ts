@@ -23,6 +23,8 @@ export async function POST(req: Request) {
     outcomes?: string[]
     deterministicScore?: number
     riskLevel?: string
+    scoreBreakdown?: Record<string, number>
+    scoreFlags?: string[]
   }
 
   const {
@@ -33,6 +35,8 @@ export async function POST(req: Request) {
     outcomes = [],
     deterministicScore,
     riskLevel,
+    scoreBreakdown,
+    scoreFlags,
   } = body
 
   if (!question.trim()) {
@@ -56,18 +60,31 @@ export async function POST(req: Request) {
   // ── LLM call ─────────────────────────────────────────────────────────────
   const outcomesText = outcomes.join(' / ')
 
+  // Format the six-dimension breakdown so the LLM knows which dimensions are weak
+  const breakdownText = scoreBreakdown
+    ? Object.entries(scoreBreakdown)
+        .map(([k, v]) => `  ${k}: ${v}`)
+        .join('\n')
+    : '  (not provided)'
+
+  const flagsText = scoreFlags && scoreFlags.length > 0
+    ? scoreFlags.map((f) => `  - ${f}`).join('\n')
+    : '  (none)'
+
   const systemPrompt = `You are a prediction market resolution quality analyst. You specialize in identifying ambiguous, incomplete, or manipulable resolution criteria in prediction market contracts.
 
-You will be given the resolution criteria for an ACTIVE, NOT YET SETTLED Polymarket prediction market. A deterministic rule-based system has already scored it ${deterministicScore ?? '?'}/100 (risk level: ${riskLevel ?? '?'}).
+You will be given the COMPLETE resolution criteria for an ACTIVE, NOT YET SETTLED Polymarket prediction market. A deterministic rule-based system has already scored it ${deterministicScore ?? '?'}/100 (risk level: ${riskLevel ?? '?'}).
 
 IMPORTANT CONTEXT: This market has NOT resolved yet. Do NOT flag the absence of a historical resolution or final outcome as a finding. Only analyse the written resolution criteria text for future resolution risk.
 
-Your job is to provide a SEMANTIC analysis — look for things a rule-based system might miss:
+Your job is to provide a SEMANTIC analysis of the FULL description text — look for things the rule-based system might miss:
 1. Logical contradictions in the criteria
 2. Phrases that sound specific but are actually vague (e.g. "widely reported", "effectively controls", "consensus of credible sources")
 3. Missing definitions for key terms used in the resolution criteria
 4. Scenarios where the resolution criteria could be interpreted multiple ways at resolution time
 5. Whether the stated resolution source actually has the authority/capacity to definitively resolve this market
+
+Pay particular attention to dimensions that scored low in the rule-based breakdown (shown in the context below).
 
 Do NOT report findings for:
 - The market not having resolved yet (it is active by design)
@@ -91,8 +108,14 @@ OUTCOMES: ${outcomesText || 'YES / NO'}
 
 RESOLUTION SOURCE: ${resolutionSource || '(not specified in criteria)'}
 
-RESOLUTION CRITERIA / DESCRIPTION:
-${description || '(no description provided)'}`
+FULL RESOLUTION CRITERIA / DESCRIPTION:
+${description || '(no description provided)'}
+
+RULE-BASED SCORE BREAKDOWN (out of max per dimension):
+${breakdownText}
+
+FLAGS RAISED BY RULE-BASED SYSTEM:
+${flagsText}`
 
   const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
@@ -103,7 +126,7 @@ ${description || '(no description provided)'}`
     body: JSON.stringify({
       model: 'deepseek-chat',
       stream: false,
-      max_tokens: 600,
+      max_tokens: 900,
       temperature: 0.2,
       messages: [
         { role: 'system', content: systemPrompt },
