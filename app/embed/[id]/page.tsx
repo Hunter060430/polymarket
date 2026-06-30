@@ -5,7 +5,7 @@ import { SITE_URL } from '@/lib/site'
 import type { NormalizedMarket } from '@/lib/types'
 import type { Metadata } from 'next'
 
-export const revalidate = 300
+export const dynamic = 'force-dynamic'
 
 // Embeds must be framable from any origin.
 export const metadata: Metadata = {

@@ -6,7 +6,7 @@ import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({
   params,
