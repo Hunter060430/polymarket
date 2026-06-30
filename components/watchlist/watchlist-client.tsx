@@ -1,21 +1,27 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import useSWR from 'swr'
 import Link from 'next/link'
 import { useWatchlist } from '@/hooks/use-watchlist'
 import { StarButton } from '@/components/markets/star-button'
 import { RiskBadge } from '@/components/risk-badge'
 import type { NormalizedMarket } from '@/lib/types'
 import { formatVolume, polymarketUrl } from '@/lib/utils'
-import { Star, ExternalLink } from 'lucide-react'
+import { Star, ExternalLink, Loader2 } from 'lucide-react'
 
-interface WatchlistClientProps {
-  allMarkets: NormalizedMarket[]
-}
+const fetcher = (url: string) => fetch(url).then(r => r.json())
 
-export function WatchlistClient({ allMarkets }: WatchlistClientProps) {
+export function WatchlistClient() {
   const { watchlist } = useWatchlist()
   const [hydrated, setHydrated] = useState(false)
+
+  const { data, isLoading } = useSWR<{ markets: NormalizedMarket[] }>(
+    '/api/markets?limit=500',
+    fetcher,
+    { revalidateOnFocus: false },
+  )
+  const allMarkets = data?.markets ?? []
 
   // Wait for localStorage hydration before rendering to avoid SSR mismatch
   useEffect(() => { setHydrated(true) }, [])
@@ -25,9 +31,10 @@ export function WatchlistClient({ allMarkets }: WatchlistClientProps) {
     [allMarkets, watchlist],
   )
 
-  if (!hydrated) {
+  if (!hydrated || isLoading) {
     return (
-      <div className="border border-border py-20 text-center">
+      <div className="border border-border py-20 text-center flex items-center justify-center gap-2">
+        <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden="true" />
         <p className="text-sm text-muted-foreground">Loading watchlist…</p>
       </div>
     )

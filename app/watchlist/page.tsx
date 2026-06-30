@@ -1,16 +1,18 @@
+// Do NOT fetch markets here — passing 500 NormalizedMarket objects through RSC
+// props serialises ~39 MB into the .rsc payload, exceeding Vercel's 19 MB limit.
+// WatchlistClient fetches its own data via /api/markets.
+export const dynamic = 'force-dynamic'
+
 import type { Metadata } from 'next'
 import { Nav, PageFooter } from '@/components/nav'
 import { WatchlistClient } from '@/components/watchlist/watchlist-client'
-import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'
 
 export const metadata: Metadata = {
   title: 'Watchlist — Verdict',
   description: 'Markets you are tracking on Verdict.',
 }
 
-export default async function WatchlistPage() {
-  const markets = await fetchAllActivePolymarketMarkets()
-
+export default function WatchlistPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Nav />
@@ -21,7 +23,7 @@ export default async function WatchlistPage() {
             Markets you have starred. Stored locally in your browser.
           </p>
         </div>
-        <WatchlistClient allMarkets={markets} />
+        <WatchlistClient />
       </main>
       <PageFooter />
     </div>
