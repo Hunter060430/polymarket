@@ -1,7 +1,7 @@
-// Revalidate every 60 s — ISR keeps the page fast while data stays fresh.
-// Do NOT use force-dynamic: it bypasses all caches and causes every request
-// to run the full 500-market Polymarket crawl in the request path.
-export const revalidate = 60
+// force-dynamic prevents build-time pre-rendering. Serialising 500 markets
+// into the RSC payload exceeds Vercel's 19 MB ISR limit (~37 MB actual).
+// The in-memory Polymarket cache (10 min TTL) handles per-request latency.
+export const dynamic = 'force-dynamic'
 
 import { Suspense } from 'react'
 import { Nav, PageFooter } from '@/components/nav'
