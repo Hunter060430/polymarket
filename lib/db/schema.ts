@@ -21,6 +21,7 @@ export const user = pgTable('user', {
   image: text('image'),
   // Verdict community profile fields
   username: text('username').unique(),
+  role: text('role').notNull().default('user'), // 'user' | 'admin'
   createdAt: timestamp('createdAt').notNull().defaultNow(),
   updatedAt: timestamp('updatedAt').notNull().defaultNow(),
 })
@@ -181,6 +182,27 @@ export const genesisBadgeClaims = pgTable(
     claimedAt: timestamp('claimed_at').notNull().defaultNow(),
   },
   (t) => ({ uniq: unique().on(t.userId, t.badgeKey) }),
+)
+
+// News posts published by admins. Supports draft/published states.
+export const newsPost = pgTable(
+  'news_post',
+  {
+    id:          serial('id').primaryKey(),
+    slug:        text('slug').notNull().unique(),
+    title:       text('title').notNull(),
+    summary:     text('summary').notNull(),
+    body:        text('body').notNull(),
+    category:    text('category').notNull().default('update'), // 'update' | 'feature' | 'analysis' | 'announcement'
+    published:   boolean('published').notNull().default(false),
+    authorId:    text('author_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+    publishedAt: timestamp('published_at'),
+    createdAt:   timestamp('created_at').notNull().defaultNow(),
+    updatedAt:   timestamp('updated_at').notNull().defaultNow(),
+  },
+  (t) => ({
+    publishedIdx: index('idx_news_published').on(t.published, t.publishedAt),
+  }),
 )
 
 // Tracks community reputation accumulated through comments, votes, and
