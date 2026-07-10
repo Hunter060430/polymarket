@@ -18,12 +18,14 @@ const NAV_LINKS = [
   { href: '/compare',          label: 'Compare'        },
   { href: '/markets/resolved', label: 'Resolved'       },
   { href: '/ask',              label: 'Ask AI'         },
+  { href: '/news',             label: 'News',          moreOnly: true },
   { href: '/methodology',      label: 'Methodology',   moreOnly: true },
   { href: '/api-docs',         label: 'API',           moreOnly: true },
   { href: '/about',            label: 'About',         moreOnly: true },
 ]
 
 const MORE_LINKS = [
+  { href: '/news',        label: 'News' },
   { href: '/methodology', label: 'Methodology' },
   { href: '/api-docs',    label: 'API Reference' },
   { href: '/about',       label: 'About' },
@@ -334,6 +336,7 @@ export function PageFooter() {
               <Link href="/dashboard"          className="text-xs text-muted-foreground hover:text-foreground transition-colors">Dashboard</Link>
               <Link href="/markets"            className="text-xs text-muted-foreground hover:text-foreground transition-colors">Markets</Link>
               <Link href="/markets/resolved"   className="text-xs text-muted-foreground hover:text-foreground transition-colors">Resolved</Link>
+              <Link href="/news"               className="text-xs text-muted-foreground hover:text-foreground transition-colors">News</Link>
               <Link href="/markets?sort=score-asc&risk=Critical" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Critical Risk</Link>
 
             </nav>
