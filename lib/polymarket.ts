@@ -9,6 +9,31 @@ const GAMMA_API_BASE = 'https://gamma-api.polymarket.com'
 const MAX_EVENTS = 500
 const PAGE_LIMIT = 100
 const REQUEST_TIMEOUT_MS = 12000
+const MAX_RETRIES = 2
+
+async function fetchWithRetry(url: string, init: RequestInit & { next?: { revalidate: number } }) {
+  let lastError: unknown
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+    try {
+      const response = await fetch(url, { ...init, signal: controller.signal })
+      if ((response.status === 429 || response.status >= 500) && attempt < MAX_RETRIES) {
+        const retryAfter = Number(response.headers.get('retry-after'))
+        await new Promise((resolve) => setTimeout(resolve, Number.isFinite(retryAfter) ? retryAfter * 1000 : 500 * 2 ** attempt))
+        continue
+      }
+      return response
+    } catch (error) {
+      lastError = error
+      if (attempt === MAX_RETRIES) throw error
+      await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt))
+    } finally {
+      clearTimeout(timeoutId)
+    }
+  }
+  throw lastError
+}
 
 export async function fetchPolymarketEventsPage(offset: number): Promise<PolymarketEvent[]> {
   const url = new URL(`${GAMMA_API_BASE}/events`)
@@ -20,33 +45,13 @@ export async function fetchPolymarketEventsPage(offset: number): Promise<Polymar
   url.searchParams.set('order', 'volume')
   url.searchParams.set('ascending', 'false')
 
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
-
-  try {
-    const res = await fetch(url.toString(), {
-      signal: controller.signal,
-      headers: { Accept: 'application/json' },
-      // Use next.revalidate so Next.js can serve from its fetch cache between
-      // in-memory cache misses. The 2MB item limit only applies to data passed
-      // to unstable_cache, not to the fetch cache itself.
-      next: { revalidate: 300 },
-    })
-    clearTimeout(timeoutId)
-
-    if (!res.ok) {
-      throw new Error(`Gamma API responded with ${res.status} at offset ${offset}`)
-    }
-
-    const data = await res.json()
-    return Array.isArray(data) ? data : []
-  } catch (err) {
-    clearTimeout(timeoutId)
-    if ((err as Error).name === 'AbortError') {
-      throw new Error(`Request timed out at offset ${offset}`)
-    }
-    throw err
-  }
+  const res = await fetchWithRetry(url.toString(), {
+    headers: { Accept: 'application/json' },
+    cache: 'no-store',
+  })
+  if (!res.ok) throw new Error(`Gamma API responded with ${res.status} at offset ${offset}`)
+  const data = await res.json()
+  return Array.isArray(data) ? data : []
 }
 
 async function fetchActivePolymarketEvents(): Promise<PolymarketEvent[]> {
@@ -293,16 +298,11 @@ export async function fetchAllActivePolymarketMarkets(): Promise<NormalizedMarke
 // ---------------------------------------------------------------------------
 
 async function _fetchMarketById(id: string): Promise<NormalizedMarket | null> {
-  const controller = new AbortController()
-  const timeoutId  = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
-
   try {
-    const res = await fetch(`${GAMMA_API_BASE}/markets/${encodeURIComponent(id)}`, {
-      signal:  controller.signal,
+    const res = await fetchWithRetry(`${GAMMA_API_BASE}/markets/${encodeURIComponent(id)}`, {
       headers: { Accept: 'application/json' },
-      next:    { revalidate: 300 },
+      next: { revalidate: 300 },
     })
-    clearTimeout(timeoutId)
 
     if (!res.ok) return null
 
@@ -321,7 +321,6 @@ async function _fetchMarketById(id: string): Promise<NormalizedMarket | null> {
     const normalised = normalizePolymarketMarkets([syntheticEvent])
     return normalised[0] ?? null
   } catch {
-    clearTimeout(timeoutId)
     return null
   }
 }

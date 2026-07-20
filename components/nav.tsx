@@ -10,6 +10,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { CommandMenu } from '@/components/command-menu'
 import { UserMenu } from '@/components/auth/user-menu'
 import { GoogleTranslate } from '@/components/google-translate'
+import { NotificationsMenu } from '@/components/notifications-menu'
 import { useSession } from '@/lib/auth-client'
 
 const NAV_LINKS = [
@@ -162,7 +163,8 @@ export function Nav() {
           {/* Theme toggle */}
           <ThemeToggle />
 
-          {/* Account */}
+          {/* Alerts and account */}
+          <NotificationsMenu />
           <UserMenu />
 
           {/* X / Twitter */}
