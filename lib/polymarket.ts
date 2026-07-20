@@ -1,4 +1,4 @@
-import { unstable_cache } from 'next/cache'
+import * as Sentry from '@sentry/nextjs'
 import type { PolymarketEvent, NormalizedMarket } from './types'
 import { calculateRuleClarityScore } from './rule-clarity-score'
 import { calculateLiquidityScore, calculateRegulatorySensitivity } from './market-signals'
@@ -8,7 +8,7 @@ const GAMMA_API_BASE = 'https://gamma-api.polymarket.com'
 // keeping parallel fetch latency manageable (~5 concurrent pages).
 const MAX_EVENTS = 500
 const PAGE_LIMIT = 100
-const REQUEST_TIMEOUT_MS = 12000
+const REQUEST_TIMEOUT_MS = 8_000
 const MAX_RETRIES = 2
 
 async function fetchWithRetry(url: string, init: RequestInit & { next?: { revalidate: number } }) {
@@ -20,7 +20,8 @@ async function fetchWithRetry(url: string, init: RequestInit & { next?: { revali
       const response = await fetch(url, { ...init, signal: controller.signal })
       if ((response.status === 429 || response.status >= 500) && attempt < MAX_RETRIES) {
         const retryAfter = Number(response.headers.get('retry-after'))
-        await new Promise((resolve) => setTimeout(resolve, Number.isFinite(retryAfter) ? retryAfter * 1000 : 500 * 2 ** attempt))
+        const delayMs = Number.isFinite(retryAfter) ? Math.min(retryAfter * 1000, 10_000) : 500 * 2 ** attempt
+        await new Promise((resolve) => setTimeout(resolve, delayMs))
         continue
       }
       return response
@@ -61,11 +62,19 @@ async function fetchActivePolymarketEvents(): Promise<PolymarketEvent[]> {
   // Fire all page requests concurrently — total latency equals the slowest
   // single request, not the sum. Failed pages return [] so one bad page
   // doesn't kill the entire result.
-  const pages = await Promise.all(
-    offsets.map((offset) =>
-      fetchPolymarketEventsPage(offset).catch(() => [] as PolymarketEvent[])
-    )
-  )
+  const results = await Promise.allSettled(offsets.map(fetchPolymarketEventsPage))
+  const failures = results.filter((result) => result.status === 'rejected')
+  const pages = results.map((result) => result.status === 'fulfilled' ? result.value : [])
+
+  if (failures.length === results.length) {
+    throw new AggregateError(failures.map((result) => result.reason), 'Every Polymarket page request failed')
+  }
+  if (failures.length > 0) {
+    Sentry.captureMessage('Partial Polymarket crawl failure', {
+      level: 'warning',
+      extra: { failedPages: failures.length, totalPages: results.length },
+    })
+  }
 
   return pages.flat().slice(0, MAX_EVENTS)
 }

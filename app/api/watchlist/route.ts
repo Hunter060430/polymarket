@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { watchlistItem } from '@/lib/db/schema'
+import { fetchMarketById } from '@/lib/polymarket'
 
 async function getUserId(request: Request) {
   const session = await auth.api.getSession({ headers: request.headers })
@@ -22,13 +23,17 @@ export async function POST(request: Request) {
   if (!userId) return NextResponse.json({ error: 'Sign in to sync your watchlist.' }, { status: 401 })
   const body = await request.json() as { marketId?: string; question?: string; price?: number; score?: number; endDate?: string }
   if (!body.marketId) return NextResponse.json({ error: 'Market ID is required.' }, { status: 400 })
+  const market = await fetchMarketById(body.marketId)
+  const baselinePrice = Number.isFinite(body.price) ? body.price! : market?.outcomePrices[0] ?? null
+  const baselineScore = Number.isFinite(body.score) ? body.score! : market?.score.totalScore ?? null
+  const endDate = body.endDate ? new Date(body.endDate) : market?.endDate ? new Date(market.endDate) : null
   await db.insert(watchlistItem).values({
     userId,
     marketId: body.marketId,
-    marketQuestion: body.question?.trim() || `Polymarket market ${body.marketId}`,
-    baselinePrice: Number.isFinite(body.price) ? body.price : null,
-    baselineScore: Number.isFinite(body.score) ? body.score : null,
-    marketEndDate: body.endDate ? new Date(body.endDate) : null,
+    marketQuestion: body.question?.trim() || market?.question || `Polymarket market ${body.marketId}`,
+    baselinePrice,
+    baselineScore,
+    marketEndDate: endDate,
     updatedAt: new Date(),
   }).onConflictDoUpdate({
     target: [watchlistItem.userId, watchlistItem.marketId],
