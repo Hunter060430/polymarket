@@ -10,7 +10,10 @@ export async function GET() {
   const errors: string[] = []
 
   try {
-    await db.execute(sql`select 1`)
+    await Promise.race([
+      db.execute(sql`select 1`),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('database health check timed out')), 3_000)),
+    ])
     checks.database = true
   } catch {
     errors.push('database unavailable')

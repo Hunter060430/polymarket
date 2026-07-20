@@ -6,5 +6,5 @@ export default defineConfig({
   timeout: 120_000,
   expect: { timeout: 30_000 },
   use: { baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000', colorScheme: 'dark', viewport: { width: 1293, height: 989 }, trace: 'retain-on-failure' },
-  webServer: { command: 'pnpm dev', url: 'http://localhost:3000', reuseExistingServer: true, timeout: 120_000 },
+  webServer: { command: 'pnpm start', url: 'http://localhost:3000', reuseExistingServer: false, timeout: 120_000 },
 })
