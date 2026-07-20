@@ -5,6 +5,9 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Nav, PageFooter } from '@/components/nav'
 import { getNewsBySlug } from '@/app/actions/news'
+import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'
+import { findMarketsForNews } from '@/lib/news-market-matcher'
+import { RelatedMarkets } from '@/components/news/related-markets'
 import { ArrowLeft } from 'lucide-react'
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -33,6 +36,10 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
   const { slug } = await params
   const post = await getNewsBySlug(slug)
   if (!post) notFound()
+
+  const relatedMarkets = await fetchAllActivePolymarketMarkets()
+    .then((markets) => findMarketsForNews(post, markets, 4))
+    .catch(() => [])
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -64,6 +71,8 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
         <div className="prose prose-sm prose-neutral max-w-none text-foreground leading-relaxed whitespace-pre-wrap">
           {post.body}
         </div>
+
+        <RelatedMarkets markets={relatedMarkets} />
 
         <div className="mt-12 pt-6 border-t border-border text-xs text-muted-foreground">
           Written by {post.authorName}

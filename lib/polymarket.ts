@@ -1,6 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import type { PolymarketEvent, NormalizedMarket } from './types'
 import { calculateRuleClarityScore } from './rule-clarity-score'
+import { calculateLiquidityScore, calculateRegulatorySensitivity } from './market-signals'
 
 const GAMMA_API_BASE = 'https://gamma-api.polymarket.com'
 // Fetch at most this many events. 500 gives broad market coverage while
@@ -155,6 +156,25 @@ export function normalizePolymarketMarkets(events: PolymarketEvent[]): Normalize
         outcomes,
         endDate,
       })
+      const liquidity = parseNumber(market.liquidity)
+      const volume = parseNumber(market.volume)
+      const volume24hr = parseNumber(market.volume24hr)
+      const bestBid = market.bestBid == null ? null : parseNumber(market.bestBid)
+      const bestAsk = market.bestAsk == null ? null : parseNumber(market.bestAsk)
+      const spread = market.spread == null ? null : parseNumber(market.spread)
+      const regulatorySensitivity = calculateRegulatorySensitivity({
+        question,
+        description,
+        category: eventCategory,
+      })
+      const liquidityScore = calculateLiquidityScore({
+        liquidity,
+        volume,
+        volume24hr,
+        bestBid,
+        bestAsk,
+        spread,
+      })
 
       // Oracle / resolution metadata. Gamma returns the UMA lifecycle as a
       // JSON-stringified array under `umaResolutionStatuses` (e.g. '["proposed", "disputed"]').
@@ -189,8 +209,8 @@ export function normalizePolymarketMarkets(events: PolymarketEvent[]): Normalize
         description,
         resolutionSource,
         endDate,
-        volume: parseNumber(market.volume),
-        liquidity: parseNumber(market.liquidity),
+        volume,
+        liquidity,
         outcomes,
         outcomePrices,
         conditionId: market.conditionId ?? '',
@@ -199,7 +219,12 @@ export function normalizePolymarketMarkets(events: PolymarketEvent[]): Normalize
         closed: market.closed ?? false,
         score,
         oneDayPriceChange: parseNumber(market.oneDayPriceChange),
-        volume24hr: parseNumber(market.volume24hr),
+        volume24hr,
+        bestBid,
+        bestAsk,
+        spread: liquidityScore.spread,
+        regulatorySensitivity,
+        liquidityScore,
         oracle: {
           resolvedBy,
           umaResolutionStatus: umaStatus,

@@ -41,6 +41,24 @@ export async function getPublishedNews() {
     .orderBy(desc(newsPost.publishedAt))
 }
 
+export async function getPublishedNewsForMatching() {
+  return db
+    .select({
+      id:          newsPost.id,
+      slug:        newsPost.slug,
+      title:       newsPost.title,
+      summary:     newsPost.summary,
+      body:        newsPost.body,
+      category:    newsPost.category,
+      publishedAt: newsPost.publishedAt,
+      authorName:  user.name,
+    })
+    .from(newsPost)
+    .innerJoin(user, eq(newsPost.authorId, user.id))
+    .where(eq(newsPost.published, true))
+    .orderBy(desc(newsPost.publishedAt))
+}
+
 export async function getNewsBySlug(slug: string) {
   const [post] = await db
     .select({

@@ -16,6 +16,9 @@ export interface PolymarketMarket {
   // Market dynamics (Gamma API)
   oneDayPriceChange?: number
   volume24hr?: string | number
+  bestBid?: string | number
+  bestAsk?: string | number
+  spread?: string | number
   // Oracle / resolution (UMA) — present on some Gamma responses.
   // The Gamma API returns the lifecycle as an ARRAY under the plural key
   // `umaResolutionStatuses`, e.g. ["proposed", "disputed", "resolved"].
@@ -50,6 +53,20 @@ export interface RuleClarityBreakdown {
 }
 
 export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical'
+
+export interface RegulatorySensitivityScore {
+  score: number
+  level: RiskLevel
+  reasons: string[]
+}
+
+export interface LiquidityScore {
+  score: number
+  level: RiskLevel
+  spread: number | null
+  turnover24h: number
+  reasons: string[]
+}
 
 // A single rule that fired during scoring — used to show users *why* a
 // dimension received the score it did (the "scoring trace").
@@ -92,6 +109,11 @@ export interface NormalizedMarket {
   // Market dynamics
   oneDayPriceChange: number   // signed fraction, e.g. +0.052 = +5.2pp
   volume24hr: number
+  bestBid: number | null
+  bestAsk: number | null
+  spread: number | null
+  regulatorySensitivity: RegulatorySensitivityScore
+  liquidityScore: LiquidityScore
   // Oracle / resolution metadata (may be empty when Gamma omits it)
   oracle: {
     resolvedBy: string          // e.g. "UMA Optimistic Oracle" or ''

@@ -14,7 +14,11 @@ import { CommunityRiskVote } from '@/components/markets/community-risk-vote'
 import { MarketDiscussion } from '@/components/markets/market-discussion'
 import { AiAnalysisPanel } from '@/components/markets/ai-analysis-panel'
 import { SimilarMarkets } from '@/components/markets/similar-markets'
+import { MarketSignalPanel } from '@/components/markets/market-signal-panel'
+import { RelatedNews } from '@/components/news/related-news'
 import { findSimilarMarkets } from '@/lib/similarity'
+import { findNewsForMarket } from '@/lib/news-market-matcher'
+import { getPublishedNewsForMatching } from '@/app/actions/news'
 import { getComments, getRiskTally } from '@/app/actions/community'
 import Link from 'next/link'
 import type { Metadata } from 'next'
@@ -119,13 +123,15 @@ export default async function MarketDetailPage({
   if (!market) notFound()
 
   // Community data — keyed by the canonical market id used in the URL
-  const [comments, riskTally] = await Promise.all([
+  const [comments, riskTally, publishedNews] = await Promise.all([
     getComments(market.marketId),
     getRiskTally(market.marketId),
+    getPublishedNewsForMatching(),
   ])
 
   // Keyword-based similarity (runs in-process, no vector DB needed)
   const similarItems = findSimilarMarkets(market, related, 5)
+  const relatedNews = findNewsForMarket(market, publishedNews, 3)
 
   const { score } = market
   const priceChange = formatPriceChange(market.oneDayPriceChange)
@@ -179,7 +185,7 @@ export default async function MarketDetailPage({
           </div>
         </div>
 
-        {/* ── Score hero ─────────────────────────────────── */}
+        {/* ── Score hero ────────────────────────────���────── */}
         <section className="border-b border-border pb-8 sm:pb-10 mb-8 sm:mb-10">
           <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-6 sm:gap-12 items-start">
             <div className="flex flex-row sm:flex-col items-center sm:items-center gap-4 sm:gap-1 sm:border-r sm:border-border sm:pr-12">
@@ -217,6 +223,16 @@ export default async function MarketDetailPage({
               )}
             </div>
           </div>
+        </section>
+
+        {/* ── Independent market signals ─────────────────── */}
+        <section className="border-b border-border pb-8 sm:pb-10 mb-8 sm:mb-10">
+          <h2 className="font-heading text-2xl font-light text-foreground mb-1">Market Signals</h2>
+          <p className="text-xs tracking-wide text-muted-foreground mb-6 uppercase">Independent from the Rule Clarity Score</p>
+          <MarketSignalPanel
+            regulatory={market.regulatorySensitivity}
+            liquidity={market.liquidityScore}
+          />
         </section>
 
         {/* ── Score Breakdown ────────────────────────────── */}
@@ -362,6 +378,9 @@ export default async function MarketDetailPage({
         <section className="border-b border-border pb-8 sm:pb-10 mb-8 sm:mb-10">
           <MarketDiscussion marketId={market.marketId} initialComments={comments} />
         </section>
+
+        {/* ── Related News ──────────────────────────────── */}
+        <RelatedNews posts={relatedNews} />
 
         {/* ── Similar Markets ───────────────────────────── */}
         <section className="border-b border-border pb-8 sm:pb-10 mb-8 sm:mb-10">
