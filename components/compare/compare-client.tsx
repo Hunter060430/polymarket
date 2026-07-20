@@ -183,6 +183,28 @@ export function CompareClient() {
                 ))}
               </tr>
 
+              <tr className="border-t border-border">
+                <td className="py-3 pr-3 text-xs tracking-[0.08em] uppercase text-muted-foreground align-middle">Regulatory Sensitivity</td>
+                {selected.map((market) => (
+                  <td key={market.marketId} className="py-3 px-3 border-l border-border align-middle">
+                    <span className="text-xl font-light tabular-nums" style={{ color: riskColor(market.regulatorySensitivity.level) }}>{market.regulatorySensitivity.score}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">{market.regulatorySensitivity.level}</span>
+                    <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{market.regulatorySensitivity.reasons[0]}</p>
+                  </td>
+                ))}
+              </tr>
+
+              <tr className="border-t border-border">
+                <td className="py-3 pr-3 text-xs tracking-[0.08em] uppercase text-muted-foreground align-middle">Trading Liquidity</td>
+                {selected.map((market) => (
+                  <td key={market.marketId} className="py-3 px-3 border-l border-border align-middle">
+                    <span className="text-xl font-light tabular-nums">{market.liquidityScore.score}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">{market.liquidityScore.level === 'Low' ? 'Strong' : market.liquidityScore.level === 'Medium' ? 'Moderate' : market.liquidityScore.level === 'High' ? 'Thin' : 'Critical'}</span>
+                    <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Spread {market.liquidityScore.spread == null ? 'unavailable' : `${(market.liquidityScore.spread * 100).toFixed(1)}%`} · 24h turnover {market.liquidityScore.turnover24h.toFixed(2)}×</p>
+                  </td>
+                ))}
+              </tr>
+
               {/* Dimension rows */}
               {DIM_ORDER.map((dim) => {
                 const meta = DIMENSION_LABELS[dim]

@@ -2,90 +2,79 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { createNewsPost, updateNewsPost, deleteNewsPost } from '@/app/actions/news'
-import { Plus, Pencil, Trash2, Eye, EyeOff, ExternalLink, X, Loader2 } from 'lucide-react'
+import {
+  createNewsPost, deleteNewsPost, setNewsMarketOverride, updateNewsPost,
+  type NewsCategory, type NewsInput,
+} from '@/app/actions/news'
+import { ExternalLink, Eye, EyeOff, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
 
 type Post = {
-  id: number
-  slug: string
-  title: string
-  summary: string
-  category: string
-  published: boolean
-  publishedAt: Date | null
-  createdAt: Date
+  id: number; slug: string; title: string; summary: string; body: string
+  category: string; sourceUrl: string | null; sourceName: string | null
+  reportedAt: Date | null; verifiedAt: Date | null; published: boolean
+  publishedAt: Date | null; createdAt: Date
 }
+type FormState = NewsInput & { id?: number }
 
-type FormState = {
-  id?: number
-  title: string
-  summary: string
-  body: string
-  category: string
-  published: boolean
+const CATEGORIES: Array<{ value: NewsCategory; label: string }> = [
+  { value: 'news', label: 'News' },
+  { value: 'analysis', label: 'Analysis' },
+  { value: 'product-update', label: 'Product Update' },
+]
+const EMPTY_FORM: FormState = {
+  title: '', summary: '', body: '', category: 'news', sourceUrl: '', sourceName: '',
+  reportedAt: new Date().toISOString().slice(0, 10), published: false,
 }
-
-const CATEGORIES = ['update', 'feature', 'analysis', 'announcement']
-const CATEGORY_LABELS: Record<string, string> = {
-  update: 'Update', feature: 'Feature', analysis: 'Analysis', announcement: 'Announcement',
-}
-
-const EMPTY_FORM: FormState = { title: '', summary: '', body: '', category: 'update', published: false }
 
 function formatDate(date: Date | null) {
-  if (!date) return '—'
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(date))
+  return date ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(date)) : '—'
 }
 
 export function AdminNewsClient({ posts: initialPosts, adminName }: { posts: Post[]; adminName: string }) {
   const [posts, setPosts] = useState(initialPosts)
   const [form, setForm] = useState<FormState | null>(null)
+  const [override, setOverride] = useState({ id: '', question: '', mode: 'include' as 'include' | 'exclude' })
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  function openNew() {
-    setForm({ ...EMPTY_FORM })
-    setError(null)
-  }
-
-  function openEdit(post: Post & { body?: string }) {
+  function openEdit(post: Post) {
     setForm({
-      id:        post.id,
-      title:     post.title,
-      summary:   post.summary,
-      body:      post.body ?? '',
-      category:  post.category,
+      id: post.id, title: post.title, summary: post.summary, body: post.body,
+      category: (['news', 'analysis', 'product-update'].includes(post.category) ? post.category : post.category === 'analysis' ? 'analysis' : 'news') as NewsCategory,
+      sourceUrl: post.sourceUrl ?? '', sourceName: post.sourceName ?? '',
+      reportedAt: post.reportedAt ? new Date(post.reportedAt).toISOString().slice(0, 10) : '',
       published: post.published,
     })
-    setError(null)
+    setError(null); setNotice(null)
   }
 
   function handleSave() {
     if (!form) return
-    if (!form.title.trim() || !form.summary.trim() || !form.body.trim()) {
-      setError('Title, summary, and body are required.')
-      return
-    }
-    setError(null)
+    setError(null); setNotice(null)
     startTransition(async () => {
       try {
-        if (form.id) {
-          await updateNewsPost(form.id, form)
-          setPosts(prev => prev.map(p => p.id === form.id
-            ? { ...p, title: form.title, summary: form.summary, category: form.category, published: form.published }
-            : p
-          ))
-        } else {
-          const result = await createNewsPost(form)
-          setPosts(prev => [{
-            id: Date.now(), slug: result.slug, title: form.title, summary: form.summary,
-            category: form.category, published: form.published,
-            publishedAt: form.published ? new Date() : null, createdAt: new Date(),
-          }, ...prev])
-        }
-        setForm(null)
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to save.')
+        if (form.id) await updateNewsPost(form.id, form)
+        else await createNewsPost(form)
+        window.location.reload()
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : 'Failed to save post.')
+      }
+    })
+  }
+
+  function handleOverride() {
+    if (!form?.id || !override.id.trim() || !override.question.trim()) {
+      setError('Market ID and question are required for a manual relationship.')
+      return
+    }
+    startTransition(async () => {
+      try {
+        await setNewsMarketOverride(form.id!, { id: override.id.trim(), question: override.question.trim() }, override.mode)
+        setOverride({ id: '', question: '', mode: 'include' })
+        setNotice(override.mode === 'include' ? 'Market pinned to this story.' : 'Market excluded from automatic matches.')
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : 'Failed to save relationship.')
       }
     })
   }
@@ -93,210 +82,44 @@ export function AdminNewsClient({ posts: initialPosts, adminName }: { posts: Pos
   function handleDelete(id: number) {
     if (!confirm('Delete this post? This cannot be undone.')) return
     startTransition(async () => {
-      try {
-        await deleteNewsPost(id)
-        setPosts(prev => prev.filter(p => p.id !== id))
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to delete.')
-      }
+      try { await deleteNewsPost(id); setPosts((current) => current.filter((post) => post.id !== id)) }
+      catch (cause) { setError(cause instanceof Error ? cause.message : 'Failed to delete post.') }
     })
   }
 
+  const fieldClass = 'w-full border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-foreground'
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-            ← ver.watch
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <span className="text-sm font-medium text-foreground">Admin — News</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground">{adminName}</span>
-          <Link href="/news" target="_blank" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
-            View live <ExternalLink className="size-3" aria-hidden="true" />
-          </Link>
-        </div>
+      <header className="flex items-center justify-between border-b border-border px-4 py-4 sm:px-6">
+        <div className="flex items-center gap-3 text-sm"><Link href="/" className="text-muted-foreground hover:text-foreground">← ver.watch</Link><span className="text-muted-foreground">/</span><span>Admin — News</span></div>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="hidden sm:inline">{adminName}</span><Link href="/news" target="_blank" className="inline-flex items-center gap-1 hover:text-foreground">View live <ExternalLink className="size-3" /></Link></div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-medium text-foreground">News Posts</h1>
-          <button
-            onClick={openNew}
-            className="inline-flex items-center gap-2 bg-foreground text-background text-sm px-4 py-2 hover:opacity-90 transition-opacity"
-          >
-            <Plus className="size-4" aria-hidden="true" />
-            New Post
-          </button>
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+        <div className="mb-6 flex items-center justify-between"><div><h1 className="text-xl font-medium">News desk</h1><p className="mt-1 text-xs text-muted-foreground">Sources are mandatory before publishing. Duplicate titles and URLs are blocked.</p></div><button onClick={() => { setForm({ ...EMPTY_FORM }); setError(null); setNotice(null) }} className="inline-flex items-center gap-2 bg-foreground px-4 py-2 text-sm text-background"><Plus className="size-4" /> New post</button></div>
+        {error && !form && <p className="mb-4 border-l-2 border-destructive pl-3 text-xs text-destructive">{error}</p>}
+        <div className="divide-y divide-border border border-border">
+          {posts.map((post) => <article key={post.id} className="flex items-start justify-between gap-4 px-4 py-4 sm:px-5">
+            <div className="min-w-0 flex-1"><div className="mb-1 flex flex-wrap items-center gap-2"><span className="border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wider">{post.category}</span>{post.published ? <span className="inline-flex items-center gap-1 text-[10px] uppercase text-emerald-600"><Eye className="size-3" /> Published {formatDate(post.publishedAt)}</span> : <span className="inline-flex items-center gap-1 text-[10px] uppercase text-muted-foreground"><EyeOff className="size-3" /> Draft</span>}{post.verifiedAt && <span className="text-[10px] uppercase text-muted-foreground">Verified {formatDate(post.verifiedAt)}</span>}</div><h2 className="truncate text-sm font-medium">{post.title}</h2><p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{post.sourceName ?? 'Source missing'} · Reported {formatDate(post.reportedAt)}</p></div>
+            <div className="flex shrink-0 items-center">{post.published && <Link href={`/news/${post.slug}`} target="_blank" className="p-2 text-muted-foreground hover:text-foreground" aria-label="View post"><ExternalLink className="size-4" /></Link>}<button onClick={() => openEdit(post)} className="p-2 text-muted-foreground hover:text-foreground" aria-label="Edit post"><Pencil className="size-4" /></button><button onClick={() => handleDelete(post.id)} className="p-2 text-muted-foreground hover:text-destructive" aria-label="Delete post"><Trash2 className="size-4" /></button></div>
+          </article>)}
         </div>
+      </main>
 
-        {error && !form && (
-          <p className="text-xs text-destructive border-l-2 border-destructive pl-3 py-1 mb-4">{error}</p>
-        )}
-
-        {/* Posts table */}
-        {posts.length === 0 ? (
-          <div className="border border-border py-16 text-center text-sm text-muted-foreground">
-            No posts yet. Create your first post.
-          </div>
-        ) : (
-          <div className="border border-border divide-y divide-border">
-            {posts.map((post) => (
-              <div key={post.id} className="flex items-start justify-between px-5 py-4 gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] tracking-wider uppercase border border-border px-1.5 py-0.5 text-muted-foreground">
-                      {CATEGORY_LABELS[post.category] ?? post.category}
-                    </span>
-                    {post.published ? (
-                      <span className="text-[10px] tracking-wider uppercase text-emerald-600 flex items-center gap-1">
-                        <Eye className="size-2.5" aria-hidden="true" /> Published {formatDate(post.publishedAt)}
-                      </span>
-                    ) : (
-                      <span className="text-[10px] tracking-wider uppercase text-muted-foreground flex items-center gap-1">
-                        <EyeOff className="size-2.5" aria-hidden="true" /> Draft
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm font-medium text-foreground truncate">{post.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{post.summary}</p>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  {post.published && (
-                    <Link
-                      href={`/news/${post.slug}`}
-                      target="_blank"
-                      className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-                      title="View post"
-                    >
-                      <ExternalLink className="size-3.5" aria-hidden="true" />
-                    </Link>
-                  )}
-                  <button
-                    onClick={() => openEdit(post)}
-                    className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-                    title="Edit"
-                  >
-                    <Pencil className="size-3.5" aria-hidden="true" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(post.id)}
-                    disabled={isPending}
-                    className="p-2 text-muted-foreground hover:text-destructive transition-colors"
-                    title="Delete"
-                  >
-                    <Trash2 className="size-3.5" aria-hidden="true" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Editor modal */}
-      {form && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-start justify-center p-4 sm:p-8 overflow-y-auto">
-          <div className="bg-background border border-border w-full max-w-2xl my-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-              <h2 className="text-sm font-medium text-foreground">
-                {form.id ? 'Edit Post' : 'New Post'}
-              </h2>
-              <button onClick={() => setForm(null)} className="text-muted-foreground hover:text-foreground transition-colors">
-                <X className="size-4" aria-hidden="true" />
-              </button>
-            </div>
-
-            <div className="px-6 py-5 flex flex-col gap-4">
-              {error && (
-                <p className="text-xs text-destructive border-l-2 border-destructive pl-3 py-1">{error}</p>
-              )}
-
-              {/* Category + Published row */}
-              <div className="flex items-center gap-4">
-                <div className="flex-1">
-                  <label className="text-xs text-muted-foreground mb-1.5 block">Category</label>
-                  <select
-                    value={form.category}
-                    onChange={e => setForm(f => f ? { ...f, category: e.target.value } : f)}
-                    className="w-full border border-border bg-background text-sm text-foreground px-3 py-2 focus:outline-none focus:ring-1 focus:ring-foreground"
-                  >
-                    {CATEGORIES.map(c => (
-                      <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex items-center gap-2 pt-5">
-                  <input
-                    type="checkbox"
-                    id="published"
-                    checked={form.published}
-                    onChange={e => setForm(f => f ? { ...f, published: e.target.checked } : f)}
-                    className="size-4 accent-foreground"
-                  />
-                  <label htmlFor="published" className="text-sm text-foreground select-none">Publish now</label>
-                </div>
-              </div>
-
-              {/* Title */}
-              <div>
-                <label className="text-xs text-muted-foreground mb-1.5 block">Title</label>
-                <input
-                  type="text"
-                  value={form.title}
-                  onChange={e => setForm(f => f ? { ...f, title: e.target.value } : f)}
-                  placeholder="Post title…"
-                  className="w-full border border-border bg-background text-sm text-foreground px-3 py-2 focus:outline-none focus:ring-1 focus:ring-foreground placeholder:text-muted-foreground"
-                />
-              </div>
-
-              {/* Summary */}
-              <div>
-                <label className="text-xs text-muted-foreground mb-1.5 block">Summary <span className="text-muted-foreground">(shown on list page)</span></label>
-                <textarea
-                  value={form.summary}
-                  onChange={e => setForm(f => f ? { ...f, summary: e.target.value } : f)}
-                  placeholder="One or two sentences describing this post…"
-                  rows={2}
-                  className="w-full border border-border bg-background text-sm text-foreground px-3 py-2 focus:outline-none focus:ring-1 focus:ring-foreground placeholder:text-muted-foreground resize-none"
-                />
-              </div>
-
-              {/* Body */}
-              <div>
-                <label className="text-xs text-muted-foreground mb-1.5 block">Body</label>
-                <textarea
-                  value={form.body}
-                  onChange={e => setForm(f => f ? { ...f, body: e.target.value } : f)}
-                  placeholder="Full post content…"
-                  rows={12}
-                  className="w-full border border-border bg-background text-sm text-foreground px-3 py-2 focus:outline-none focus:ring-1 focus:ring-foreground placeholder:text-muted-foreground resize-y font-mono"
-                />
-              </div>
-            </div>
-
-            <div className="px-6 py-4 border-t border-border flex items-center justify-end gap-3">
-              <button
-                onClick={() => setForm(null)}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={isPending}
-                className="inline-flex items-center gap-2 bg-foreground text-background text-sm px-5 py-2 hover:opacity-90 transition-opacity disabled:opacity-50"
-              >
-                {isPending && <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />}
-                {form.id ? 'Save Changes' : 'Create Post'}
-              </button>
-            </div>
-          </div>
+      {form && <div className="fixed inset-0 z-50 overflow-y-auto bg-background/85 p-4 backdrop-blur-sm sm:p-8"><div className="mx-auto max-w-3xl border border-border bg-background">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4"><div><h2 className="text-sm font-medium">{form.id ? 'Edit post' : 'New post'}</h2><p className="mt-1 text-xs text-muted-foreground">Editorial verification is recorded each time a story is published.</p></div><button onClick={() => setForm(null)} aria-label="Close editor"><X className="size-4" /></button></div>
+        <div className="flex flex-col gap-4 px-5 py-5">
+          {error && <p className="border-l-2 border-destructive pl-3 text-xs text-destructive">{error}</p>}{notice && <p className="border-l-2 border-emerald-600 pl-3 text-xs text-emerald-600">{notice}</p>}
+          <div className="grid gap-4 sm:grid-cols-2"><label className="text-xs text-muted-foreground">Category<select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as NewsCategory })} className={`${fieldClass} mt-1.5`}>{CATEGORIES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label><label className="text-xs text-muted-foreground">Reported date<input type="date" value={form.reportedAt} onChange={(e) => setForm({ ...form, reportedAt: e.target.value })} className={`${fieldClass} mt-1.5`} /></label></div>
+          <label className="text-xs text-muted-foreground">Title<input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={`${fieldClass} mt-1.5`} /></label>
+          <label className="text-xs text-muted-foreground">Summary<textarea rows={2} value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} className={`${fieldClass} mt-1.5 resize-none`} /></label>
+          <label className="text-xs text-muted-foreground">Body<textarea rows={10} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} className={`${fieldClass} mt-1.5 resize-y font-mono`} /></label>
+          <div className="grid gap-4 sm:grid-cols-2"><label className="text-xs text-muted-foreground">Source name<input value={form.sourceName} onChange={(e) => setForm({ ...form, sourceName: e.target.value })} placeholder="Reuters, CFTC, Polymarket…" className={`${fieldClass} mt-1.5`} /></label><label className="text-xs text-muted-foreground">Source URL<input type="url" value={form.sourceUrl} onChange={(e) => setForm({ ...form, sourceUrl: e.target.value })} placeholder="https://…" className={`${fieldClass} mt-1.5`} /></label></div>
+          {form.id && <fieldset className="border border-border p-4"><legend className="px-2 text-xs font-medium">Manual market relationship</legend><div className="grid gap-3 sm:grid-cols-[1fr_2fr_auto]"><input value={override.id} onChange={(e) => setOverride({ ...override, id: e.target.value })} placeholder="Market ID" className={fieldClass} /><input value={override.question} onChange={(e) => setOverride({ ...override, question: e.target.value })} placeholder="Market question" className={fieldClass} /><select value={override.mode} onChange={(e) => setOverride({ ...override, mode: e.target.value as 'include' | 'exclude' })} className={fieldClass}><option value="include">Pin</option><option value="exclude">Exclude</option></select></div><button type="button" onClick={handleOverride} disabled={isPending} className="mt-3 text-xs font-medium underline underline-offset-4">Save relationship</button></fieldset>}
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.published} onChange={(e) => setForm({ ...form, published: e.target.checked })} className="size-4 accent-foreground" /> Publish after verification</label>
         </div>
-      )}
+        <div className="flex justify-end gap-3 border-t border-border px-5 py-4"><button onClick={() => setForm(null)} className="px-4 py-2 text-sm text-muted-foreground">Cancel</button><button onClick={handleSave} disabled={isPending} className="inline-flex items-center gap-2 bg-foreground px-5 py-2 text-sm text-background disabled:opacity-50">{isPending && <Loader2 className="size-4 animate-spin" />}{form.id ? 'Save changes' : 'Create post'}</button></div>
+      </div></div>}
     </div>
   )
 }

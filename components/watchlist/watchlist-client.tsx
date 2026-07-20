@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { useWatchlist } from '@/hooks/use-watchlist'
@@ -13,8 +13,7 @@ import { Star, ExternalLink, Loader2 } from 'lucide-react'
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
 export function WatchlistClient() {
-  const { watchlist } = useWatchlist()
-  const [hydrated, setHydrated] = useState(false)
+  const { watchlist, isLoading: isWatchlistLoading, isAuthenticated } = useWatchlist()
 
   const { data, isLoading } = useSWR<{ markets: NormalizedMarket[] }>(
     '/api/markets?limit=500',
@@ -23,19 +22,29 @@ export function WatchlistClient() {
   )
   const allMarkets = data?.markets ?? []
 
-  // Wait for localStorage hydration before rendering to avoid SSR mismatch
-  useEffect(() => { setHydrated(true) }, [])
-
   const starred = useMemo(
     () => allMarkets.filter((m) => watchlist.has(m.marketId)),
     [allMarkets, watchlist],
   )
 
-  if (!hydrated || isLoading) {
+  if (isLoading || isWatchlistLoading) {
     return (
       <div className="border border-border py-20 text-center flex items-center justify-center gap-2">
         <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden="true" />
         <p className="text-sm text-muted-foreground">Loading watchlist…</p>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="border border-border py-20 text-center flex flex-col items-center gap-4">
+        <Star className="size-8 text-muted-foreground/30" aria-hidden="true" />
+        <div>
+          <p className="text-sm font-medium text-foreground">Sign in to sync your watchlist</p>
+          <p className="text-xs text-muted-foreground mt-1">Your saved markets and alerts will follow you across devices.</p>
+        </div>
+        <Link href="/sign-in?next=/watchlist" className="bg-foreground px-4 py-2 text-sm text-background">Sign in</Link>
       </div>
     )
   }
