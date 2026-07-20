@@ -27,14 +27,18 @@ const REGULATORY_SIGNALS: Array<{
   weight: number
   pattern: RegExp
 }> = [
-  { label: 'Election or political office', weight: 30, pattern: /\b(election|electoral|president|prime minister|governor|senate|congress|parliament|vote count|ballot)\b/i },
-  { label: 'Government or regulator action', weight: 26, pattern: /\b(cftc|sec|fda|doj|ftc|federal reserve|central bank|government|regulator|regulation|executive order|sanction)\b/i },
-  { label: 'Court or legal ruling', weight: 25, pattern: /\b(court|supreme court|judge|ruling|verdict|lawsuit|indict|convict|sentence|appeal|legal challenge)\b/i },
+  { label: 'Election or political office', weight: 30, pattern: /\b(election|electoral|president|prime minister|governor|senate|congress|parliament|vote count|ballot|referendum|impeach(?:ment|ed)?)\b/i },
+  { label: 'Government or regulator action', weight: 26, pattern: /\b(cftc|sec|fda|doj|ftc|federal reserve|central bank|government|regulator|regulation|executive order|sanctions?|white house|pentagon|state department)\b/i },
+  { label: 'Court or legal ruling', weight: 25, pattern: /\b(court|supreme court|judge|ruling|verdict|lawsuit|indict(?:ment|ed)?|convict(?:ion|ed)?|sentenc(?:e|ed|ing)|appeal|legal challenge|prosecution|acquittal)\b/i },
   { label: 'Named public official', weight: 18, pattern: /\b(trump|biden|harris|putin|zelensky|netanyahu|modi|starmer|macron|xi jinping|khamenei|pezeshkian|erdogan|lula|milei)\b/i },
-  { label: 'War or geopolitical intervention', weight: 18, pattern: /\b(war|invasion|ceasefire|military strike|troops|territory|nato|united nations)\b/i },
-  { label: 'Policy implementation dependency', weight: 16, pattern: /\b(pass a bill|legislation|law signed|ban|approve|authorization|government shutdown|tariff)\b/i },
-  { label: 'Sensitive financial enforcement', weight: 14, pattern: /\b(crypto ban|securities law|enforcement action|license|licensed exchange|investigation)\b/i },
+  { label: 'Military conflict or intervention', weight: 42, pattern: /\b(war|invad(?:e|es|ed|ing)|invasion|ceasefire|airstrikes?|missile strikes?|military (?:strike|action|operation|intervention)|armed conflict|deploy(?:ment|ed|ing)? troops|ground troops|bomb(?:ing|ed)?|annex(?:ation|ed)?|nuclear (?:strike|attack|weapon)|territorial occupation)\b/i },
+  { label: 'Geopolitical or state actor', weight: 20, pattern: /\b(united states|u\.s\.|us military|iran|israel|russia|ukraine|china|taiwan|north korea|south korea|nato|united nations|hezbollah|hamas|gaza|west bank)\b/i },
+  { label: 'Policy implementation dependency', weight: 16, pattern: /\b(pass(?:es|ed)? (?:a )?bill|legislation|law signed|ban(?:ned)?|approv(?:e|es|ed|al)|authoriz(?:e|es|ed|ation)|government shutdown|tariffs?|veto)\b/i },
+  { label: 'Sensitive financial enforcement', weight: 14, pattern: /\b(crypto ban|securities law|enforcement action|licen[cs](?:e|ed|ing)|licensed exchange|investigation|money laundering|asset freeze)\b/i },
 ]
+
+const MILITARY_ACTION_PATTERN = /\b(war|invad(?:e|es|ed|ing)|invasion|airstrikes?|missile strikes?|military (?:strike|action|operation|intervention)|armed conflict|deploy(?:ment|ed|ing)? troops|ground troops|bomb(?:ing|ed)?|annex(?:ation|ed)?|nuclear (?:strike|attack|weapon))\b/i
+const STATE_ACTOR_PATTERN = /\b(united states|u\.s\.|us military|iran|israel|russia|ukraine|china|taiwan|north korea|south korea|nato|pentagon|white house)\b/i
 
 export function calculateRegulatorySensitivity(input: {
   question: string
@@ -43,13 +47,22 @@ export function calculateRegulatorySensitivity(input: {
 }): RegulatorySensitivityScore {
   const text = `${input.question} ${input.description ?? ''} ${input.category ?? ''}`
   const matched = REGULATORY_SIGNALS.filter((signal) => signal.pattern.test(text))
-  const score = clamp(matched.reduce((total, signal) => total + signal.weight, 0))
+  const reasons = matched.map((signal) => signal.label)
+  let rawScore = matched.reduce((total, signal) => total + signal.weight, 0)
 
+  // Explicit state-on-state military outcomes depend heavily on government
+  // decisions and are especially vulnerable to intervention or forced closure.
+  if (MILITARY_ACTION_PATTERN.test(text) && STATE_ACTOR_PATTERN.test(text)) {
+    rawScore += 18
+    reasons.unshift('State-on-state military escalation')
+  }
+
+  const score = clamp(rawScore)
   return {
     score,
     level: sensitivityLevel(score),
-    reasons: matched.length > 0
-      ? matched.map((signal) => signal.label).slice(0, 4)
+    reasons: reasons.length > 0
+      ? [...new Set(reasons)].slice(0, 4)
       : ['No material regulatory dependency detected'],
   }
 }
