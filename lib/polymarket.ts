@@ -334,14 +334,8 @@ async function _fetchMarketById(id: string): Promise<NormalizedMarket | null> {
   }
 }
 
-// unstable_cache with a static key is not per-argument; we wrap it so each
-// unique ID gets its own cache slot.
 export function fetchMarketById(id: string): Promise<NormalizedMarket | null> {
-  return unstable_cache(
-    () => _fetchMarketById(id),
-    [`polymarket-market-${id}-v1`],
-    { revalidate: 300, tags: ['polymarket-markets'] }
-  )()
+  return _fetchMarketById(id)
 }
 
 // ---------------------------------------------------------------------------
