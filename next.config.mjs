@@ -2,9 +2,6 @@ import { withSentryConfig } from '@sentry/nextjs'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Keep preview artifacts separate from stale Turbopack chunks left by prior
-  // dev-server generations. This prevents old HMR manifests from being served.
-  distDir: '.next-webpack',
   images: {
     unoptimized: true,
   },
