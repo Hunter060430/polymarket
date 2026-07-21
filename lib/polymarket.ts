@@ -1,13 +1,40 @@
-import { unstable_cache } from 'next/cache'
+import * as Sentry from '@sentry/nextjs'
 import type { PolymarketEvent, NormalizedMarket } from './types'
 import { calculateRuleClarityScore } from './rule-clarity-score'
+import { calculateLiquidityScore, calculateRegulatorySensitivity } from './market-signals'
 
 const GAMMA_API_BASE = 'https://gamma-api.polymarket.com'
 // Fetch at most this many events. 500 gives broad market coverage while
 // keeping parallel fetch latency manageable (~5 concurrent pages).
 const MAX_EVENTS = 500
 const PAGE_LIMIT = 100
-const REQUEST_TIMEOUT_MS = 12000
+const REQUEST_TIMEOUT_MS = 8_000
+const MAX_RETRIES = 2
+
+async function fetchWithRetry(url: string, init: RequestInit & { next?: { revalidate: number } }) {
+  let lastError: unknown
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+    try {
+      const response = await fetch(url, { ...init, signal: controller.signal })
+      if ((response.status === 429 || response.status >= 500) && attempt < MAX_RETRIES) {
+        const retryAfter = Number(response.headers.get('retry-after'))
+        const delayMs = Number.isFinite(retryAfter) ? Math.min(retryAfter * 1000, 10_000) : 500 * 2 ** attempt
+        await new Promise((resolve) => setTimeout(resolve, delayMs))
+        continue
+      }
+      return response
+    } catch (error) {
+      lastError = error
+      if (attempt === MAX_RETRIES) throw error
+      await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt))
+    } finally {
+      clearTimeout(timeoutId)
+    }
+  }
+  throw lastError
+}
 
 export async function fetchPolymarketEventsPage(offset: number): Promise<PolymarketEvent[]> {
   const url = new URL(`${GAMMA_API_BASE}/events`)
@@ -19,33 +46,13 @@ export async function fetchPolymarketEventsPage(offset: number): Promise<Polymar
   url.searchParams.set('order', 'volume')
   url.searchParams.set('ascending', 'false')
 
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
-
-  try {
-    const res = await fetch(url.toString(), {
-      signal: controller.signal,
-      headers: { Accept: 'application/json' },
-      // Use next.revalidate so Next.js can serve from its fetch cache between
-      // in-memory cache misses. The 2MB item limit only applies to data passed
-      // to unstable_cache, not to the fetch cache itself.
-      next: { revalidate: 300 },
-    })
-    clearTimeout(timeoutId)
-
-    if (!res.ok) {
-      throw new Error(`Gamma API responded with ${res.status} at offset ${offset}`)
-    }
-
-    const data = await res.json()
-    return Array.isArray(data) ? data : []
-  } catch (err) {
-    clearTimeout(timeoutId)
-    if ((err as Error).name === 'AbortError') {
-      throw new Error(`Request timed out at offset ${offset}`)
-    }
-    throw err
-  }
+  const res = await fetchWithRetry(url.toString(), {
+    headers: { Accept: 'application/json' },
+    cache: 'no-store',
+  })
+  if (!res.ok) throw new Error(`Gamma API responded with ${res.status} at offset ${offset}`)
+  const data = await res.json()
+  return Array.isArray(data) ? data : []
 }
 
 async function fetchActivePolymarketEvents(): Promise<PolymarketEvent[]> {
@@ -55,11 +62,19 @@ async function fetchActivePolymarketEvents(): Promise<PolymarketEvent[]> {
   // Fire all page requests concurrently — total latency equals the slowest
   // single request, not the sum. Failed pages return [] so one bad page
   // doesn't kill the entire result.
-  const pages = await Promise.all(
-    offsets.map((offset) =>
-      fetchPolymarketEventsPage(offset).catch(() => [] as PolymarketEvent[])
-    )
-  )
+  const results = await Promise.allSettled(offsets.map(fetchPolymarketEventsPage))
+  const failures = results.filter((result) => result.status === 'rejected')
+  const pages = results.map((result) => result.status === 'fulfilled' ? result.value : [])
+
+  if (failures.length === results.length) {
+    throw new AggregateError(failures.map((result) => result.reason), 'Every Polymarket page request failed')
+  }
+  if (failures.length > 0) {
+    Sentry.captureMessage('Partial Polymarket crawl failure', {
+      level: 'warning',
+      extra: { failedPages: failures.length, totalPages: results.length },
+    })
+  }
 
   return pages.flat().slice(0, MAX_EVENTS)
 }
@@ -155,6 +170,25 @@ export function normalizePolymarketMarkets(events: PolymarketEvent[]): Normalize
         outcomes,
         endDate,
       })
+      const liquidity = parseNumber(market.liquidity)
+      const volume = parseNumber(market.volume)
+      const volume24hr = parseNumber(market.volume24hr)
+      const bestBid = market.bestBid == null ? null : parseNumber(market.bestBid)
+      const bestAsk = market.bestAsk == null ? null : parseNumber(market.bestAsk)
+      const spread = market.spread == null ? null : parseNumber(market.spread)
+      const regulatorySensitivity = calculateRegulatorySensitivity({
+        question,
+        description,
+        category: eventCategory,
+      })
+      const liquidityScore = calculateLiquidityScore({
+        liquidity,
+        volume,
+        volume24hr,
+        bestBid,
+        bestAsk,
+        spread,
+      })
 
       // Oracle / resolution metadata. Gamma returns the UMA lifecycle as a
       // JSON-stringified array under `umaResolutionStatuses` (e.g. '["proposed", "disputed"]').
@@ -189,8 +223,8 @@ export function normalizePolymarketMarkets(events: PolymarketEvent[]): Normalize
         description,
         resolutionSource,
         endDate,
-        volume: parseNumber(market.volume),
-        liquidity: parseNumber(market.liquidity),
+        volume,
+        liquidity,
         outcomes,
         outcomePrices,
         conditionId: market.conditionId ?? '',
@@ -199,7 +233,12 @@ export function normalizePolymarketMarkets(events: PolymarketEvent[]): Normalize
         closed: market.closed ?? false,
         score,
         oneDayPriceChange: parseNumber(market.oneDayPriceChange),
-        volume24hr: parseNumber(market.volume24hr),
+        volume24hr,
+        bestBid,
+        bestAsk,
+        spread: liquidityScore.spread,
+        regulatorySensitivity,
+        liquidityScore,
         oracle: {
           resolvedBy,
           umaResolutionStatus: umaStatus,
@@ -268,16 +307,11 @@ export async function fetchAllActivePolymarketMarkets(): Promise<NormalizedMarke
 // ---------------------------------------------------------------------------
 
 async function _fetchMarketById(id: string): Promise<NormalizedMarket | null> {
-  const controller = new AbortController()
-  const timeoutId  = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
-
   try {
-    const res = await fetch(`${GAMMA_API_BASE}/markets/${encodeURIComponent(id)}`, {
-      signal:  controller.signal,
+    const res = await fetchWithRetry(`${GAMMA_API_BASE}/markets/${encodeURIComponent(id)}`, {
       headers: { Accept: 'application/json' },
-      next:    { revalidate: 300 },
+      next: { revalidate: 300 },
     })
-    clearTimeout(timeoutId)
 
     if (!res.ok) return null
 
@@ -296,19 +330,12 @@ async function _fetchMarketById(id: string): Promise<NormalizedMarket | null> {
     const normalised = normalizePolymarketMarkets([syntheticEvent])
     return normalised[0] ?? null
   } catch {
-    clearTimeout(timeoutId)
     return null
   }
 }
 
-// unstable_cache with a static key is not per-argument; we wrap it so each
-// unique ID gets its own cache slot.
 export function fetchMarketById(id: string): Promise<NormalizedMarket | null> {
-  return unstable_cache(
-    () => _fetchMarketById(id),
-    [`polymarket-market-${id}-v1`],
-    { revalidate: 300, tags: ['polymarket-markets'] }
-  )()
+  return _fetchMarketById(id)
 }
 
 // ---------------------------------------------------------------------------

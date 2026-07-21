@@ -2,6 +2,7 @@
 
 import { Nav, PageFooter } from '@/components/nav'
 import { useEffect } from 'react'
+import * as Sentry from '@sentry/nextjs'
 import Link from 'next/link'
 import { ArrowRight, RefreshCw } from 'lucide-react'
 
@@ -13,7 +14,7 @@ export default function GlobalError({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error('[verdict] unhandled error:', error)
+    Sentry.captureException(error)
   }, [error])
 
   return (

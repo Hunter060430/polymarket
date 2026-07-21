@@ -5,13 +5,18 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Nav, PageFooter } from '@/components/nav'
 import { getNewsBySlug } from '@/app/actions/news'
+import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'
+import { findMarketsForNews } from '@/lib/news-market-matcher'
+import { RelatedMarkets } from '@/components/news/related-markets'
 import { ArrowLeft } from 'lucide-react'
 
 const CATEGORY_LABELS: Record<string, string> = {
-  update:       'Update',
-  feature:      'Feature',
-  analysis:     'Analysis',
-  announcement: 'Announcement',
+  news: 'News',
+  analysis: 'Analysis',
+  'product-update': 'Product Update',
+  update: 'News',
+  feature: 'Product Update',
+  announcement: 'News',
 }
 
 function formatDate(date: Date | null) {
@@ -33,6 +38,16 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
   const { slug } = await params
   const post = await getNewsBySlug(slug)
   if (!post) notFound()
+
+  const relatedMarkets = await fetchAllActivePolymarketMarkets()
+    .then((markets) => {
+      const excludedIds = new Set(post.overrides.filter((item) => item.mode === 'exclude').map((item) => item.marketId))
+      const includedIds = new Set(post.overrides.filter((item) => item.mode === 'include').map((item) => item.marketId))
+      const pinned = markets.filter((market) => includedIds.has(market.marketId))
+      const automatic = findMarketsForNews(post, markets.filter((market) => !excludedIds.has(market.marketId) && !includedIds.has(market.marketId)), 4)
+      return [...pinned, ...automatic].slice(0, 4)
+    })
+    .catch(() => [])
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -64,6 +79,26 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
         <div className="prose prose-sm prose-neutral max-w-none text-foreground leading-relaxed whitespace-pre-wrap">
           {post.body}
         </div>
+
+        {post.sourceUrl && post.sourceName && (
+          <aside className="mt-10 border-y border-border py-5" aria-label="Source">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Primary source</p>
+            <a
+              href={post.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
+            >
+              {post.sourceName}
+              <span aria-hidden="true">↗</span>
+            </a>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Reported {formatDate(post.reportedAt)} · Verified {formatDate(post.verifiedAt)}
+            </p>
+          </aside>
+        )}
+
+        <RelatedMarkets markets={relatedMarkets} />
 
         <div className="mt-12 pt-6 border-t border-border text-xs text-muted-foreground">
           Written by {post.authorName}

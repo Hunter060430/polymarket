@@ -15,11 +15,15 @@ export async function GET(req: NextRequest) {
   const queryParam    = searchParams.get('q')
   const riskParam     = searchParams.get('risk')
   const minScoreParam = searchParams.get('minScore')
+  const regulatoryParam = searchParams.get('regulatory')
+  const liquidityParam = searchParams.get('liquidity')
   const limitParam    = searchParams.get('limit')
   const offsetParam   = searchParams.get('offset')
 
-  const limit  = Math.min(Number(limitParam  ?? 100), 500)
-  const offset = Math.max(Number(offsetParam ?? 0),   0)
+  const requestedLimit = Number(limitParam ?? 100)
+  const requestedOffset = Number(offsetParam ?? 0)
+  const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(Math.trunc(requestedLimit), 1), 500) : 100
+  const offset = Number.isFinite(requestedOffset) ? Math.max(Math.trunc(requestedOffset), 0) : 0
 
   try {
     const allMarkets = await fetchAllActivePolymarketMarkets()
@@ -46,6 +50,14 @@ export async function GET(req: NextRequest) {
       if (!isNaN(minScore)) {
         markets = markets.filter((m) => m.score.totalScore >= minScore)
       }
+    }
+
+    const levels = ['Critical', 'High', 'Medium', 'Low']
+    if (regulatoryParam && levels.includes(regulatoryParam)) {
+      markets = markets.filter((market) => market.regulatorySensitivity.level === regulatoryParam)
+    }
+    if (liquidityParam && levels.includes(liquidityParam)) {
+      markets = markets.filter((market) => market.liquidityScore.level === liquidityParam)
     }
 
     const paginated = markets.slice(offset, offset + limit)

@@ -11,10 +11,12 @@ export const metadata: Metadata = {
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  update:       'Update',
-  feature:      'Feature',
-  analysis:     'Analysis',
-  announcement: 'Announcement',
+  news: 'News',
+  analysis: 'Analysis',
+  'product-update': 'Product Update',
+  update: 'News',
+  feature: 'Product Update',
+  announcement: 'News',
 }
 
 function formatDate(date: Date | null) {
@@ -35,7 +37,7 @@ export default async function NewsPage() {
             News
           </h1>
           <p className="text-sm text-muted-foreground mt-2">
-            Updates, feature releases, and analysis from the team.
+            Verified reporting, independent analysis, and product updates — clearly labeled and sourced.
           </p>
         </div>
 

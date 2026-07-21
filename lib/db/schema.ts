@@ -4,6 +4,7 @@ import {
   timestamp,
   boolean,
   integer,
+  doublePrecision,
   serial,
   unique,
   index,
@@ -193,7 +194,11 @@ export const newsPost = pgTable(
     title:       text('title').notNull(),
     summary:     text('summary').notNull(),
     body:        text('body').notNull(),
-    category:    text('category').notNull().default('update'), // 'update' | 'feature' | 'analysis' | 'announcement'
+    category:    text('category').notNull().default('news'), // 'news' | 'analysis' | 'product-update'
+    sourceUrl:   text('source_url'),
+    sourceName:  text('source_name'),
+    reportedAt:  timestamp('reported_at'),
+    verifiedAt:  timestamp('verified_at'),
     published:   boolean('published').notNull().default(false),
     authorId:    text('author_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
     publishedAt: timestamp('published_at'),
@@ -204,6 +209,58 @@ export const newsPost = pgTable(
     publishedIdx: index('idx_news_published').on(t.published, t.publishedAt),
   }),
 )
+
+export const newsMarketOverride = pgTable(
+  'news_market_override',
+  {
+    id:             serial('id').primaryKey(),
+    newsPostId:     integer('news_post_id').notNull().references(() => newsPost.id, { onDelete: 'cascade' }),
+    marketId:       text('market_id').notNull(),
+    mode:           text('mode').notNull(), // 'include' | 'exclude'
+    marketQuestion: text('market_question'),
+    createdAt:      timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => ({ uniq: unique().on(t.newsPostId, t.marketId) }),
+)
+
+export const watchlistItem = pgTable(
+  'watchlist_item',
+  {
+    id:             serial('id').primaryKey(),
+    userId:         text('user_id').notNull(),
+    marketId:       text('market_id').notNull(),
+    marketQuestion: text('market_question').notNull(),
+    baselinePrice:  doublePrecision('baseline_price'),
+    baselineScore:  integer('baseline_score'),
+    marketEndDate:  timestamp('market_end_date'),
+    createdAt:      timestamp('created_at').notNull().defaultNow(),
+    updatedAt:      timestamp('updated_at').notNull().defaultNow(),
+  },
+  (t) => ({ uniq: unique().on(t.userId, t.marketId) }),
+)
+
+export const userNotification = pgTable('user_notification', {
+  id:        serial('id').primaryKey(),
+  userId:    text('user_id').notNull(),
+  marketId:  text('market_id'),
+  type:      text('type').notNull(),
+  title:     text('title').notNull(),
+  message:   text('message').notNull(),
+  read:      boolean('read').notNull().default(false),
+  dedupeKey: text('dedupe_key').notNull().unique(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
+export const userFeedback = pgTable('user_feedback', {
+  id:        serial('id').primaryKey(),
+  userId:    text('user_id'),
+  email:     text('email'),
+  category:  text('category').notNull(),
+  message:   text('message').notNull(),
+  pageUrl:   text('page_url'),
+  status:    text('status').notNull().default('open'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+})
 
 // Tracks community reputation accumulated through comments, votes, and
 // accurate risk predictions. Badge thresholds: Observer 0–9, Contributor 10–49, Expert 50+.

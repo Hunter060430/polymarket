@@ -20,7 +20,7 @@ export default function WatchlistPage() {
         <div className="mb-8">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Watchlist</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Markets you have starred. Stored locally in your browser.
+            Synced to your account, with in-app alerts for price, score, and approaching resolution changes.
           </p>
         </div>
         <WatchlistClient />

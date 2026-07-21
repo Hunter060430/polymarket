@@ -34,6 +34,8 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
   const [riskFilter, setRiskFilter] = useState(() => searchParams.get('risk') ?? 'all')
   const [category,   setCategory]   = useState(() => searchParams.get('category') ?? 'all')
   const [minVolume,  setMinVolume]  = useState(() => searchParams.get('minvol') ?? '0')
+  const [regulatory, setRegulatory] = useState(() => searchParams.get('regulatory') ?? 'all')
+  const [liquidity,  setLiquidity]  = useState(() => searchParams.get('liquidity') ?? 'all')
   const [sortBy,     setSortBy]     = useState(() => searchParams.get('sort') ?? 'score-asc')
   const [page,       setPageState]  = useState(1)
 
@@ -81,6 +83,18 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
     syncUrl({ minvol: v })
   }, [syncUrl])
 
+  const handleRegulatoryChange = useCallback((value: string) => {
+    setRegulatory(value)
+    setPageState(1)
+    syncUrl({ regulatory: value })
+  }, [syncUrl])
+
+  const handleLiquidityChange = useCallback((value: string) => {
+    setLiquidity(value)
+    setPageState(1)
+    syncUrl({ liquidity: value })
+  }, [syncUrl])
+
   const handleSortChange = useCallback((v: string) => {
     setSortBy(v)
     setPageState(1)
@@ -92,6 +106,8 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
     setRiskFilter('all')
     setCategory('all')
     setMinVolume('0')
+    setRegulatory('all')
+    setLiquidity('all')
     setSortBy('score-asc')
     setPageState(1)
     setFocusedIndex(-1)
@@ -122,14 +138,18 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
     }
 
     const minvol = parseFloat(minVolume) || 0
-    if (minvol > 0) {
-      result = result.filter((m) => m.volume >= minvol)
-    }
+    if (minvol > 0) result = result.filter((m) => m.volume >= minvol)
+    if (regulatory !== 'all') result = result.filter((m) => m.regulatorySensitivity.level === regulatory)
+    if (liquidity !== 'all') result = result.filter((m) => m.liquidityScore.level === liquidity)
 
     return [...result].sort((a, b) => {
       switch (sortBy) {
         case 'score-asc':   return a.score.totalScore - b.score.totalScore
         case 'score-desc':  return b.score.totalScore - a.score.totalScore
+        case 'regulatory-desc': return b.regulatorySensitivity.score - a.regulatorySensitivity.score
+        case 'regulatory-asc': return a.regulatorySensitivity.score - b.regulatorySensitivity.score
+        case 'liquidity-desc': return b.liquidityScore.score - a.liquidityScore.score
+        case 'liquidity-asc': return a.liquidityScore.score - b.liquidityScore.score
         case 'volume-desc': return b.volume - a.volume
         case 'volume-asc':  return a.volume - b.volume
         case 'enddate-asc': {
@@ -141,7 +161,7 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
         default:     return 0
       }
     })
-  }, [markets, query, riskFilter, category, minVolume, sortBy, watchlist])
+  }, [markets, query, riskFilter, category, minVolume, regulatory, liquidity, sortBy, watchlist])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage   = Math.min(page, totalPages)
@@ -204,6 +224,32 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
             </Select>
           )}
 
+          <Select value={regulatory} onValueChange={(v) => v && handleRegulatoryChange(v)}>
+            <SelectTrigger className="w-full sm:w-40 text-xs h-8 bg-background border-border" aria-label="Regulatory sensitivity filter">
+              <SelectValue placeholder="Regulatory" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Any regulatory risk</SelectItem>
+              <SelectItem value="Critical">Regulatory: Critical</SelectItem>
+              <SelectItem value="High">Regulatory: High</SelectItem>
+              <SelectItem value="Medium">Regulatory: Medium</SelectItem>
+              <SelectItem value="Low">Regulatory: Low</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={liquidity} onValueChange={(v) => v && handleLiquidityChange(v)}>
+            <SelectTrigger className="w-full sm:w-40 text-xs h-8 bg-background border-border" aria-label="Liquidity score filter">
+              <SelectValue placeholder="Liquidity" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Any liquidity</SelectItem>
+              <SelectItem value="Low">Liquidity: Strong</SelectItem>
+              <SelectItem value="Medium">Liquidity: Moderate</SelectItem>
+              <SelectItem value="High">Liquidity: Thin</SelectItem>
+              <SelectItem value="Critical">Liquidity: Critical</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Select value={minVolume} onValueChange={(v) => v && handleMinvolChange(v)}>
             <SelectTrigger className="w-full sm:w-32 text-xs h-8 bg-background border-border" aria-label="Minimum volume">
               <SelectValue placeholder="Min volume" />
@@ -225,6 +271,10 @@ export function MarketsListClient({ markets }: MarketsListClientProps) {
             <SelectContent>
               <SelectItem value="score-asc">Score: Lowest first</SelectItem>
               <SelectItem value="score-desc">Score: Highest first</SelectItem>
+              <SelectItem value="regulatory-desc">Regulatory: Highest first</SelectItem>
+              <SelectItem value="regulatory-asc">Regulatory: Lowest first</SelectItem>
+              <SelectItem value="liquidity-desc">Liquidity: Strongest first</SelectItem>
+              <SelectItem value="liquidity-asc">Liquidity: Weakest first</SelectItem>
               <SelectItem value="volume-desc">Volume: Highest first</SelectItem>
               <SelectItem value="volume-asc">Volume: Lowest first</SelectItem>
               <SelectItem value="enddate-asc">End date: Soonest</SelectItem>
