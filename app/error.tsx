@@ -9,16 +9,18 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
   }, [error])
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center gap-6 px-4 text-center bg-background">
-      <p className="text-xs uppercase tracking-[0.12em] text-destructive">Page Error</p>
-      <h1 className="text-3xl font-light text-foreground max-w-sm">Something went wrong</h1>
-      <p className="text-sm text-muted-foreground max-w-md">
+    <main style={{ display: 'flex', minHeight: '100vh', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '24px', padding: '16px', textAlign: 'center', background: '#0a0a0a', color: '#f5f5f5', maxWidth: '560px', margin: '0 auto' }}>
+      <p style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.12em', color: '#ef4444', margin: 0 }}>Page Error</p>
+      <h1 style={{ fontSize: '28px', fontWeight: 300, color: '#f5f5f5', margin: '0 0 8px 0', maxWidth: '420px' }}>Something went wrong</h1>
+      <p style={{ fontSize: '14px', lineHeight: 1.6, color: '#999', margin: 0, maxWidth: '400px' }}>
         An error occurred while loading this page. The error has been recorded and our team is aware.
       </p>
-      {error.digest && <p className="text-xs text-muted-foreground/50 font-mono">ref: {error.digest}</p>}
+      {error.digest && <p style={{ fontSize: '12px', color: '#555', fontFamily: 'monospace', margin: '8px 0 0 0' }}>ref: {error.digest}</p>}
       <button
         onClick={() => reset()}
-        className="bg-foreground text-background px-5 py-2.5 text-xs tracking-[0.12em] uppercase font-medium hover:opacity-90 transition-opacity"
+        style={{ background: '#f5f5f5', color: '#0a0a0a', padding: '10px 20px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 500, border: 'none', cursor: 'pointer', marginTop: '12px' }}
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
       >
         Try Again
       </button>
