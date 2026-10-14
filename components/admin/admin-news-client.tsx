@@ -89,12 +89,7 @@ export function AdminNewsClient({ posts: initialPosts, adminName }: { posts: Pos
 
   const fieldClass = 'w-full border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-foreground'
   return (
-    <div className="min-h-screen bg-background">
-      <header className="flex items-center justify-between border-b border-border px-4 py-4 sm:px-6">
-        <div className="flex items-center gap-3 text-sm"><Link href="/" className="text-muted-foreground hover:text-foreground">← ver.watch</Link><span className="text-muted-foreground">/</span><span>Admin — News</span></div>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="hidden sm:inline">{adminName}</span><Link href="/news" target="_blank" className="inline-flex items-center gap-1 hover:text-foreground">View live <ExternalLink className="size-3" /></Link></div>
-      </header>
-
+    <>
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <div className="mb-6 flex items-center justify-between"><div><h1 className="text-xl font-medium">News desk</h1><p className="mt-1 text-xs text-muted-foreground">Sources are mandatory before publishing. Duplicate titles and URLs are blocked.</p></div><button onClick={() => { setForm({ ...EMPTY_FORM }); setError(null); setNotice(null) }} className="inline-flex items-center gap-2 bg-foreground px-4 py-2 text-sm text-background"><Plus className="size-4" /> New post</button></div>
         {error && !form && <p className="mb-4 border-l-2 border-destructive pl-3 text-xs text-destructive">{error}</p>}
@@ -120,6 +115,6 @@ export function AdminNewsClient({ posts: initialPosts, adminName }: { posts: Pos
         </div>
         <div className="flex justify-end gap-3 border-t border-border px-5 py-4"><button onClick={() => setForm(null)} className="px-4 py-2 text-sm text-muted-foreground">Cancel</button><button onClick={handleSave} disabled={isPending} className="inline-flex items-center gap-2 bg-foreground px-5 py-2 text-sm text-background disabled:opacity-50">{isPending && <Loader2 className="size-4 animate-spin" />}{form.id ? 'Save changes' : 'Create post'}</button></div>
       </div></div>}
-    </div>
+    </>
   )
 }

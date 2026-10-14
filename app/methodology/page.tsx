@@ -141,7 +141,7 @@ export default function MethodologyPage() {
           </div>
         </section>
 
-        {/* ── Criteria ──────────────────────────────────── */}
+        {/* ── Criteria ─���────────────────────────────────── */}
         <section className="border-b border-border pb-12 mb-12">
           <h2 className="font-heading text-3xl font-light text-foreground mb-8">Scoring Criteria</h2>
           <div className="flex flex-col gap-0 divide-y divide-border border-t border-border">
@@ -202,6 +202,15 @@ export default function MethodologyPage() {
           <h2 className="font-heading text-3xl font-light text-foreground mb-6">Version History</h2>
           <div className="flex flex-col">
             {[
+              {
+                version: 'v1.3',
+                date: 'Oct 2026',
+                changes: [
+                  'Added Regulatory Sensitivity and Trading Liquidity signals alongside the clarity score, shown on market pages, the markets list filters and the Compare tool.',
+                  'Compare tool now places up to four markets side by side, including the six-dimension breakdown.',
+                  'News posts and markets are now linked in both directions, with editor overrides to pin or exclude a market.',
+                ],
+              },
               {
                 version: 'v1.2',
                 date: 'Jun 2025',

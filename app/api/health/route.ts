@@ -4,19 +4,28 @@ import { db } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+// Uptime monitors hit this endpoint constantly, and a `select 1` would keep
+// Neon awake around the clock. The database is only probed with ?deep=1.
+export async function GET(request: Request) {
   const startedAt = Date.now()
-  const checks = { database: false, polymarket: false }
+  const deep = new URL(request.url).searchParams.get('deep') === '1'
+  const checks: { database: boolean | 'skipped'; polymarket: boolean } = {
+    database: 'skipped',
+    polymarket: false,
+  }
   const errors: string[] = []
 
-  try {
-    await Promise.race([
-      db.execute(sql`select 1`),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('database health check timed out')), 3_000)),
-    ])
-    checks.database = true
-  } catch {
-    errors.push('database unavailable')
+  if (deep) {
+    try {
+      await Promise.race([
+        db.execute(sql`select 1`),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('database health check timed out')), 3_000)),
+      ])
+      checks.database = true
+    } catch {
+      checks.database = false
+      errors.push('database unavailable')
+    }
   }
 
   try {
@@ -31,6 +40,6 @@ export async function GET() {
     errors.push('Polymarket API unavailable')
   }
 
-  const healthy = checks.database && checks.polymarket
+  const healthy = checks.database !== false && checks.polymarket
   return NextResponse.json({ status: healthy ? 'ok' : 'degraded', checks, latencyMs: Date.now() - startedAt, checkedAt: new Date().toISOString(), errors }, { status: healthy ? 200 : 503 })
 }

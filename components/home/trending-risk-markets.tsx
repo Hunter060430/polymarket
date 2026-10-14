@@ -81,14 +81,14 @@ export async function TrendingRiskMarkets() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border-t border-l border-border">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {items.map(({ market, comments, votes, community }) => {
             const color = riskColor(market.score.riskLevel)
             return (
               <Link
                 key={market.marketId}
                 href={`/markets/${market.marketId}`}
-                className="group flex flex-col gap-4 px-6 py-6 border-b border-r border-border hover:bg-secondary/25 transition-colors"
+                className="card-lift group flex flex-col gap-4 rounded-2xl border border-border bg-card px-6 py-6"
               >
                 <div className="flex items-center justify-between gap-3">
                   <span

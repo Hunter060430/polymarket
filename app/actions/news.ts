@@ -5,7 +5,21 @@ import { newsMarketOverride, newsPost, user } from '@/lib/db/schema'
 import { and, desc, eq, ilike, ne, or } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, unstable_cache, updateTag } from 'next/cache'
+
+const NEWS_TAG = 'news'
+const NEWS_CACHE_SECONDS = 600
+const NEWS_DATE_FIELDS = ['reportedAt', 'verifiedAt', 'publishedAt'] as const
+
+// unstable_cache serializes to JSON, so Date columns come back as strings.
+function reviveNewsDates<T extends Record<string, unknown>>(row: T): T {
+  const next: Record<string, unknown> = { ...row }
+  for (const field of NEWS_DATE_FIELDS) {
+    const value = next[field]
+    if (typeof value === 'string') next[field] = new Date(value)
+  }
+  return next as T
+}
 
 export type NewsCategory = 'news' | 'analysis' | 'product-update'
 export type NewsInput = {
@@ -46,28 +60,51 @@ const publicFields = {
   authorName: user.name,
 }
 
+const loadPublishedNews = unstable_cache(
+  async () =>
+    db.select({
+      id: newsPost.id, slug: newsPost.slug, title: newsPost.title,
+      summary: newsPost.summary, category: newsPost.category,
+      sourceName: newsPost.sourceName, reportedAt: newsPost.reportedAt,
+      publishedAt: newsPost.publishedAt, authorName: user.name,
+    }).from(newsPost).innerJoin(user, eq(newsPost.authorId, user.id))
+      .where(eq(newsPost.published, true)).orderBy(desc(newsPost.reportedAt), desc(newsPost.publishedAt)),
+  ['news:published-list'],
+  { tags: [NEWS_TAG], revalidate: NEWS_CACHE_SECONDS },
+)
+
+const loadPublishedNewsForMatching = unstable_cache(
+  async () =>
+    db.select(publicFields).from(newsPost).innerJoin(user, eq(newsPost.authorId, user.id))
+      .where(eq(newsPost.published, true)).orderBy(desc(newsPost.reportedAt), desc(newsPost.publishedAt)),
+  ['news:published-for-matching'],
+  { tags: [NEWS_TAG], revalidate: NEWS_CACHE_SECONDS },
+)
+
+const loadNewsBySlug = unstable_cache(
+  async (slug: string) => {
+    const [post] = await db.select(publicFields).from(newsPost)
+      .innerJoin(user, eq(newsPost.authorId, user.id))
+      .where(and(eq(newsPost.slug, slug), eq(newsPost.published, true))).limit(1)
+    if (!post) return null
+    const overrides = await db.select().from(newsMarketOverride).where(eq(newsMarketOverride.newsPostId, post.id))
+    return { ...post, overrides }
+  },
+  ['news:by-slug'],
+  { tags: [NEWS_TAG], revalidate: NEWS_CACHE_SECONDS },
+)
+
 export async function getPublishedNews() {
-  return db.select({
-    id: newsPost.id, slug: newsPost.slug, title: newsPost.title,
-    summary: newsPost.summary, category: newsPost.category,
-    sourceName: newsPost.sourceName, reportedAt: newsPost.reportedAt,
-    publishedAt: newsPost.publishedAt, authorName: user.name,
-  }).from(newsPost).innerJoin(user, eq(newsPost.authorId, user.id))
-    .where(eq(newsPost.published, true)).orderBy(desc(newsPost.reportedAt), desc(newsPost.publishedAt))
+  return (await loadPublishedNews()).map(reviveNewsDates)
 }
 
 export async function getPublishedNewsForMatching() {
-  return db.select(publicFields).from(newsPost).innerJoin(user, eq(newsPost.authorId, user.id))
-    .where(eq(newsPost.published, true)).orderBy(desc(newsPost.reportedAt), desc(newsPost.publishedAt))
+  return (await loadPublishedNewsForMatching()).map(reviveNewsDates)
 }
 
 export async function getNewsBySlug(slug: string) {
-  const [post] = await db.select(publicFields).from(newsPost)
-    .innerJoin(user, eq(newsPost.authorId, user.id))
-    .where(and(eq(newsPost.slug, slug), eq(newsPost.published, true))).limit(1)
-  if (!post) return null
-  const overrides = await db.select().from(newsMarketOverride).where(eq(newsMarketOverride.newsPostId, post.id))
-  return { ...post, overrides }
+  const post = await loadNewsBySlug(slug)
+  return post ? reviveNewsDates(post) : null
 }
 
 export async function getAllNewsAdmin() {
@@ -125,7 +162,7 @@ export async function createNewsPost(data: NewsInput) {
     verifiedAt: data.published ? new Date() : null,
     authorId: adminUser.id, publishedAt: data.published ? new Date() : null, updatedAt: new Date(),
   })
-  revalidatePath('/news'); revalidatePath('/admin/news')
+  revalidatePath('/news'); revalidatePath('/admin/news'); updateTag(NEWS_TAG)
   return { slug }
 }
 
@@ -143,7 +180,7 @@ export async function updateNewsPost(id: number, data: NewsInput) {
     publishedAt: data.published && !current.published ? new Date() : current.publishedAt,
     updatedAt: new Date(),
   }).where(eq(newsPost.id, id))
-  revalidatePath('/news'); revalidatePath('/admin/news')
+  revalidatePath('/news'); revalidatePath('/admin/news'); updateTag(NEWS_TAG)
 }
 
 export async function setNewsMarketOverride(newsPostId: number, market: { id: string; question: string }, mode: 'include' | 'exclude') {
@@ -151,18 +188,20 @@ export async function setNewsMarketOverride(newsPostId: number, market: { id: st
   await db.insert(newsMarketOverride).values({ newsPostId, marketId: market.id, marketQuestion: market.question, mode })
     .onConflictDoUpdate({ target: [newsMarketOverride.newsPostId, newsMarketOverride.marketId], set: { mode, marketQuestion: market.question } })
   revalidatePath('/news')
+  updateTag(NEWS_TAG)
 }
 
 export async function removeNewsMarketOverride(newsPostId: number, marketId: string) {
   await requireAdmin()
   await db.delete(newsMarketOverride).where(and(eq(newsMarketOverride.newsPostId, newsPostId), eq(newsMarketOverride.marketId, marketId)))
   revalidatePath('/news')
+  updateTag(NEWS_TAG)
 }
 
 export async function deleteNewsPost(id: number) {
   await requireAdmin()
   await db.delete(newsPost).where(eq(newsPost.id, id))
-  revalidatePath('/news'); revalidatePath('/admin/news')
+  revalidatePath('/news'); revalidatePath('/admin/news'); updateTag(NEWS_TAG)
 }
 
 export async function checkIsAdmin() {

@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { SITE_URL } from '@/lib/site'
 import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'
+import { getPublishedNews } from '@/app/actions/news'
 
 export const revalidate = 3600
 
@@ -26,7 +27,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/privacy`,          lastModified: now, changeFrequency: 'yearly',  priority: 0.3 },
     { url: `${SITE_URL}/terms`,            lastModified: now, changeFrequency: 'yearly',  priority: 0.3 },
     { url: `${SITE_URL}/whitepaper`,       lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${SITE_URL}/news`,             lastModified: now, changeFrequency: 'daily',   priority: 0.8 },
+    { url: `${SITE_URL}/pre-season`,       lastModified: now, changeFrequency: 'weekly',  priority: 0.5 },
+    { url: `${SITE_URL}/ask`,              lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
   ]
+
+  let newsRoutes: MetadataRoute.Sitemap = []
+  try {
+    const posts = await getPublishedNews()
+    newsRoutes = posts.map((post) => ({
+      url: `${SITE_URL}/news/${post.slug}`,
+      lastModified: post.publishedAt ?? post.reportedAt ?? now,
+      changeFrequency: 'weekly' as const,
+      priority: 0.7,
+    }))
+  } catch {
+    newsRoutes = []
+  }
 
   try {
     const markets = await fetchAllActivePolymarketMarkets()
@@ -56,9 +73,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.5,
     }))
 
-    return [...staticRoutes, ...categoryRoutes, ...marketRoutes]
+    return [...staticRoutes, ...newsRoutes, ...categoryRoutes, ...marketRoutes]
   } catch {
     // If the data feed is down, still return the static routes.
-    return staticRoutes
+    return [...staticRoutes, ...newsRoutes]
   }
 }
