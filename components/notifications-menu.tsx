@@ -9,17 +9,36 @@ const fetcher = (url: string) => fetch(url).then((response) => response.json())
 
 type Notification = { id: number; title: string; message: string; read: boolean; createdAt: string }
 
+const ALERT_SCAN_INTERVAL_MS = 30 * 60_000
+const ALERT_SCAN_STORAGE_KEY = 'verdict:alerts-scanned-at'
+
+function shouldScanAlerts() {
+  try {
+    const lastScan = Number(sessionStorage.getItem(ALERT_SCAN_STORAGE_KEY) ?? 0)
+    if (Date.now() - lastScan < ALERT_SCAN_INTERVAL_MS) return false
+    sessionStorage.setItem(ALERT_SCAN_STORAGE_KEY, String(Date.now()))
+    return true
+  } catch {
+    return true
+  }
+}
+
 export function NotificationsMenu() {
   const { data: session } = useSession()
+  const userId = session?.user?.id
   const [open, setOpen] = useState(false)
-  const { data, mutate } = useSWR<{ notifications: Notification[]; unread: number }>(session?.user ? '/api/notifications' : null, fetcher, { refreshInterval: 60_000 })
+  const { data, mutate } = useSWR<{ notifications: Notification[]; unread: number }>(userId ? '/api/notifications' : null, fetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    dedupingInterval: 5 * 60_000,
+  })
 
   useEffect(() => {
-    if (!session?.user) return
+    if (!userId || !shouldScanAlerts()) return
     fetch('/api/notifications/refresh', { method: 'POST' }).then(() => mutate())
-  }, [session?.user, mutate])
+  }, [userId, mutate])
 
-  if (!session?.user) return null
+  if (!userId) return null
   async function markAllRead() {
     await fetch('/api/notifications', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ all: true }) })
     mutate()
@@ -27,7 +46,7 @@ export function NotificationsMenu() {
 
   return (
     <div className="relative">
-      <button onClick={() => setOpen((value) => !value)} aria-label={`Notifications${data?.unread ? `, ${data.unread} unread` : ''}`} aria-expanded={open} className="relative flex size-9 items-center justify-center text-muted-foreground hover:text-foreground">
+      <button onClick={() => { if (!open) mutate(); setOpen((value) => !value) }} aria-label={`Notifications${data?.unread ? `, ${data.unread} unread` : ''}`} aria-expanded={open} className="relative flex size-9 items-center justify-center text-muted-foreground hover:text-foreground">
         <Bell className="size-4" />
         {!!data?.unread && <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" />}
       </button>

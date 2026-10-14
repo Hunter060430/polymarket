@@ -3,9 +3,9 @@
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { marketComment, commentVote, riskVote, user, userReputation } from '@/lib/db/schema'
-import { and, desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import { headers } from 'next/headers'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, unstable_cache, updateTag } from 'next/cache'
 import { upsertReputation } from '@/lib/reputation'
 import { awardCommentTasks, awardVoteTasks, awardUpvoteTasks } from '@/lib/pre-season-server'
 
@@ -49,51 +49,67 @@ export type CommentWithAuthor = {
 
 // --- Comments --------------------------------------------------------------
 
+const COMMUNITY_CACHE_SECONDS = 300
+const communityTag = (marketId: string) => `community:${marketId}`
+
+type PublicComment = Omit<CommentWithAuthor, 'hasVoted'>
+
+const loadPublicComments = unstable_cache(
+  async (marketId: string): Promise<PublicComment[]> => {
+    const rows = await db
+      .select({
+        id: marketComment.id,
+        marketId: marketComment.marketId,
+        userId: marketComment.userId,
+        body: marketComment.body,
+        upvotes: marketComment.upvotes,
+        createdAt: marketComment.createdAt,
+        authorName: user.name,
+        authorImage: user.image,
+        authorBadge: userReputation.badge,
+        authorScore: userReputation.score,
+      })
+      .from(marketComment)
+      .leftJoin(user, eq(marketComment.userId, user.id))
+      .leftJoin(userReputation, eq(marketComment.userId, userReputation.userId))
+      .where(eq(marketComment.marketId, marketId))
+      .orderBy(desc(marketComment.upvotes), desc(marketComment.createdAt))
+      .limit(200)
+
+    return rows.map((r) => ({
+      id: r.id,
+      marketId: r.marketId,
+      userId: r.userId,
+      body: r.body,
+      upvotes: r.upvotes,
+      createdAt: r.createdAt,
+      authorName: r.authorName,
+      authorImage: r.authorImage,
+      authorBadge: r.authorBadge ?? 'Observer',
+      authorScore: r.authorScore ?? 0,
+    }))
+  },
+  ['community:comments'],
+  { revalidate: COMMUNITY_CACHE_SECONDS },
+)
+
 export async function getComments(marketId: string): Promise<CommentWithAuthor[]> {
-  const session = await getSession()
-  const viewerId = session?.user?.id ?? null
+  const [cached, session] = await Promise.all([loadPublicComments(marketId), getSession()])
+  // unstable_cache round-trips through JSON, so createdAt arrives as a string.
+  const comments = cached.map((comment) => ({ ...comment, createdAt: new Date(comment.createdAt) }))
+  const viewerId = session?.user?.id
 
-  const rows = await db
-    .select({
-      id: marketComment.id,
-      marketId: marketComment.marketId,
-      userId: marketComment.userId,
-      body: marketComment.body,
-      upvotes: marketComment.upvotes,
-      createdAt: marketComment.createdAt,
-      authorName: user.name,
-      authorImage: user.image,
-      votedId: commentVote.id,
-      authorBadge: userReputation.badge,
-      authorScore: userReputation.score,
-    })
-    .from(marketComment)
-    .leftJoin(user, eq(marketComment.userId, user.id))
-    .leftJoin(
-      commentVote,
-      and(
-        eq(commentVote.commentId, marketComment.id),
-        viewerId ? eq(commentVote.userId, viewerId) : sql`false`,
-      ),
-    )
-    .leftJoin(userReputation, eq(marketComment.userId, userReputation.userId))
-    .where(eq(marketComment.marketId, marketId))
-    .orderBy(desc(marketComment.upvotes), desc(marketComment.createdAt))
-    .limit(200)
+  if (!viewerId || comments.length === 0) {
+    return comments.map((comment) => ({ ...comment, hasVoted: false }))
+  }
 
-  return rows.map((r) => ({
-    id: r.id,
-    marketId: r.marketId,
-    userId: r.userId,
-    body: r.body,
-    upvotes: r.upvotes,
-    createdAt: r.createdAt,
-    authorName: r.authorName,
-    authorImage: r.authorImage,
-    authorBadge: r.authorBadge ?? 'Observer',
-    authorScore: r.authorScore ?? 0,
-    hasVoted: r.votedId !== null,
-  }))
+  const voted = await db
+    .select({ commentId: commentVote.commentId })
+    .from(commentVote)
+    .where(and(eq(commentVote.userId, viewerId), inArray(commentVote.commentId, comments.map((comment) => comment.id))))
+  const votedIds = new Set(voted.map((row) => row.commentId))
+
+  return comments.map((comment) => ({ ...comment, hasVoted: votedIds.has(comment.id) }))
 }
 
 const RATE_WINDOW_MS = 60_000 // 1 minute
@@ -135,6 +151,7 @@ export async function postComment(
   void upsertReputation(userId, 'comment')
   void awardCommentTasks(userId)
   revalidatePath(`/markets/${marketId}`)
+  updateTag(communityTag(marketId))
   return { ok: true }
 }
 
@@ -144,6 +161,7 @@ export async function deleteComment(commentId: number, marketId: string) {
     .delete(marketComment)
     .where(and(eq(marketComment.id, commentId), eq(marketComment.userId, userId)))
   revalidatePath(`/markets/${marketId}`)
+  updateTag(communityTag(marketId))
 }
 
 export async function toggleCommentUpvote(commentId: number, marketId: string) {
@@ -178,6 +196,7 @@ export async function toggleCommentUpvote(commentId: number, marketId: string) {
     if (commented) void awardUpvoteTasks(commented.userId)
   }
   revalidatePath(`/markets/${marketId}`)
+  updateTag(communityTag(marketId))
 }
 
 // --- Community risk votes ---------------------------------------------------
@@ -191,35 +210,39 @@ export type RiskTally = {
   userVote: string | null
 }
 
-export async function getRiskTally(marketId: string): Promise<RiskTally> {
-  const session = await getSession()
-  const viewerId = session?.user?.id ?? null
-
-  const rows = await db
-    .select({ vote: riskVote.vote, count: sql<number>`count(*)::int` })
-    .from(riskVote)
-    .where(eq(riskVote.marketId, marketId))
-    .groupBy(riskVote.vote)
-
-  const tally: RiskTally = { low: 0, medium: 0, high: 0, critical: 0, total: 0, userVote: null }
-  for (const r of rows) {
-    if (r.vote === 'low') tally.low = r.count
-    else if (r.vote === 'medium') tally.medium = r.count
-    else if (r.vote === 'high') tally.high = r.count
-    else if (r.vote === 'critical') tally.critical = r.count
-    tally.total += r.count
-  }
-
-  if (viewerId) {
-    const mine = await db
-      .select({ vote: riskVote.vote })
+const loadPublicTally = unstable_cache(
+  async (marketId: string): Promise<RiskTally> => {
+    const rows = await db
+      .select({ vote: riskVote.vote, count: sql<number>`count(*)::int` })
       .from(riskVote)
-      .where(and(eq(riskVote.marketId, marketId), eq(riskVote.userId, viewerId)))
-      .limit(1)
-    tally.userVote = mine[0]?.vote ?? null
-  }
+      .where(eq(riskVote.marketId, marketId))
+      .groupBy(riskVote.vote)
 
-  return tally
+    const tally: RiskTally = { low: 0, medium: 0, high: 0, critical: 0, total: 0, userVote: null }
+    for (const r of rows) {
+      if (r.vote === 'low') tally.low = r.count
+      else if (r.vote === 'medium') tally.medium = r.count
+      else if (r.vote === 'high') tally.high = r.count
+      else if (r.vote === 'critical') tally.critical = r.count
+      tally.total += r.count
+    }
+    return tally
+  },
+  ['community:risk-tally'],
+  { revalidate: COMMUNITY_CACHE_SECONDS },
+)
+
+export async function getRiskTally(marketId: string): Promise<RiskTally> {
+  const [tally, session] = await Promise.all([loadPublicTally(marketId), getSession()])
+  const viewerId = session?.user?.id
+  if (!viewerId) return { ...tally, userVote: null }
+
+  const mine = await db
+    .select({ vote: riskVote.vote })
+    .from(riskVote)
+    .where(and(eq(riskVote.marketId, marketId), eq(riskVote.userId, viewerId)))
+    .limit(1)
+  return { ...tally, userVote: mine[0]?.vote ?? null }
 }
 
 // --- Trending (community engagement) ---------------------------------------
@@ -233,35 +256,44 @@ export type TrendingEntry = {
 
 // Returns market ids ranked by community engagement (comments + risk votes)
 // over the trailing window. Used to power the homepage "Trending" section.
+const loadTrendingMarketIds = unstable_cache(
+  async (limit: number): Promise<TrendingEntry[]> => {
+    const since = new Date(Date.now() - 1000 * 60 * 60 * 24 * 14) // 14 days
+
+    const [commentCounts, voteCounts] = await Promise.all([
+      db
+        .select({ marketId: marketComment.marketId, n: sql<number>`count(*)::int` })
+        .from(marketComment)
+        .where(sql`${marketComment.createdAt} > ${since}`)
+        .groupBy(marketComment.marketId),
+      db
+        .select({ marketId: riskVote.marketId, n: sql<number>`count(*)::int` })
+        .from(riskVote)
+        .where(sql`${riskVote.updatedAt} > ${since}`)
+        .groupBy(riskVote.marketId),
+    ])
+
+    const map = new Map<string, TrendingEntry>()
+    for (const c of commentCounts) {
+      map.set(c.marketId, { marketId: c.marketId, comments: c.n, votes: 0, activity: 0 })
+    }
+    for (const v of voteCounts) {
+      const e = map.get(v.marketId) ?? { marketId: v.marketId, comments: 0, votes: 0, activity: 0 }
+      e.votes = v.n
+      map.set(v.marketId, e)
+    }
+
+    return Array.from(map.values())
+      .map((e) => ({ ...e, activity: e.comments * 2 + e.votes }))
+      .sort((a, b) => b.activity - a.activity)
+      .slice(0, limit)
+  },
+  ['community:trending'],
+  { revalidate: 15 * 60 },
+)
+
 export async function getTrendingMarketIds(limit = 6): Promise<TrendingEntry[]> {
-  const since = new Date(Date.now() - 1000 * 60 * 60 * 24 * 14) // 14 days
-
-  const commentCounts = await db
-    .select({ marketId: marketComment.marketId, n: sql<number>`count(*)::int` })
-    .from(marketComment)
-    .where(sql`${marketComment.createdAt} > ${since}`)
-    .groupBy(marketComment.marketId)
-
-  const voteCounts = await db
-    .select({ marketId: riskVote.marketId, n: sql<number>`count(*)::int` })
-    .from(riskVote)
-    .where(sql`${riskVote.updatedAt} > ${since}`)
-    .groupBy(riskVote.marketId)
-
-  const map = new Map<string, TrendingEntry>()
-  for (const c of commentCounts) {
-    map.set(c.marketId, { marketId: c.marketId, comments: c.n, votes: 0, activity: 0 })
-  }
-  for (const v of voteCounts) {
-    const e = map.get(v.marketId) ?? { marketId: v.marketId, comments: 0, votes: 0, activity: 0 }
-    e.votes = v.n
-    map.set(v.marketId, e)
-  }
-
-  return Array.from(map.values())
-    .map((e) => ({ ...e, activity: e.comments * 2 + e.votes }))
-    .sort((a, b) => b.activity - a.activity)
-    .slice(0, limit)
+  return loadTrendingMarketIds(limit)
 }
 
 export async function castRiskVote(
@@ -287,5 +319,6 @@ export async function castRiskVote(
   void upsertReputation(userId, 'vote')
   void awardVoteTasks(userId)
   revalidatePath(`/markets/${marketId}`)
+  updateTag(communityTag(marketId))
   return { ok: true }
 }

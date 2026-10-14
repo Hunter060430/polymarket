@@ -39,6 +39,11 @@ export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 days
     updateAge: 60 * 60 * 24, // 1 day
+    // Serve session reads from a signed cookie so getSession does not hit Neon on every request.
+    cookieCache: {
+      enabled: true,
+      maxAge: 5 * 60,
+    },
   },
   ...(process.env.NODE_ENV === 'development'
     ? {

@@ -14,7 +14,7 @@ const OFFICIAL_SOURCE_WORDS = [
   'closing price', 'spot price', 'last traded price', 'price feed',
 ]
 
-// Regex to detect price-prediction markets (e.g. "Will BTC reach $100k by Dec 2025?")
+// Regex to detect price-prediction markets (e.g. "Will BTC reach $100k by Dec 2026?")
 const PRICE_MARKET_RE = /\b(reach|exceed|above|below|hit|close above|close below|trade above|trade at|over|under)\b.*\$[\d,]+|\$[\d,]+.*(reach|exceed|above|below)/i
 const VAGUE_SOURCE_WORDS   = ['credible reporting', 'reliable sources', 'consensus', 'substantial evidence']
 const EVIDENCE_TYPES       = ['screenshots', 'official statements', 'filings', 'data providers', 'on-chain transactions', 'published reports', 'press release', 'verified']

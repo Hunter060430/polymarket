@@ -31,7 +31,13 @@ export async function POST() {
       const result = await db.insert(userNotification).values({ userId, marketId: market.marketId, ...alert, dedupeKey: `${userId}:${market.marketId}:${alert.type}:${day}` }).onConflictDoNothing().returning({ id: userNotification.id })
       created += result.length
     }
-    await db.update(watchlistItem).set({ baselinePrice: currentPrice, baselineScore: market.score.totalScore, marketEndDate: market.endDate ? new Date(market.endDate) : null, updatedAt: new Date() }).where(eq(watchlistItem.id, item.id))
+    const endDate = market.endDate ? new Date(market.endDate) : null
+    const unchanged =
+      Number(item.baselinePrice) === currentPrice &&
+      Number(item.baselineScore) === market.score.totalScore &&
+      (item.marketEndDate ? new Date(item.marketEndDate).getTime() : null) === (endDate ? endDate.getTime() : null)
+    if (unchanged) continue
+    await db.update(watchlistItem).set({ baselinePrice: currentPrice, baselineScore: market.score.totalScore, marketEndDate: endDate, updatedAt: new Date() }).where(eq(watchlistItem.id, item.id))
   }
   return NextResponse.json({ created })
 }

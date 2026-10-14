@@ -17,7 +17,7 @@ const PARAMS = [
 ]
 
 const RESPONSE_EXAMPLE = `{
-  "scannedAt": "2025-01-15T10:30:00.000Z",
+  "scannedAt": "2026-10-14T10:30:00.000Z",
   "eventCount": 42,
   "marketCount": 100,
   "markets": [
