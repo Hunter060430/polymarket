@@ -71,7 +71,7 @@ export function Nav() {
   useEffect(() => { setOpen(false) }, [pathname])
 
   return (
-    <header className="border-b border-border bg-background sticky top-0 z-50">
+    <header className="glass border-b border-border/70 sticky top-0 z-50">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 h-14">
 
         {/* Wordmark */}
@@ -105,10 +105,10 @@ export function Nav() {
                 key={href}
                 href={href}
                 className={cn(
-                  'relative px-3 h-14 inline-flex items-center text-xs tracking-[0.06em] uppercase transition-colors',
+                  'relative mx-0.5 px-3 h-8 rounded-full inline-flex items-center text-xs tracking-[0.06em] uppercase transition-colors',
                   active
-                    ? 'text-foreground after:absolute after:bottom-0 after:left-3 after:right-3 after:h-[1.5px] after:bg-foreground'
-                    : 'text-muted-foreground hover:text-foreground',
+                    ? 'text-foreground bg-secondary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary/60',
                 )}
               >
                 {label}
@@ -123,25 +123,25 @@ export function Nav() {
               aria-label="More navigation links"
               aria-expanded={moreOpen}
               className={cn(
-                'relative px-3 h-14 inline-flex items-center gap-1 text-xs tracking-[0.06em] uppercase transition-colors',
-                moreOpen ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+                'relative mx-0.5 px-3 h-8 rounded-full inline-flex items-center gap-1 text-xs tracking-[0.06em] uppercase transition-colors',
+                moreOpen ? 'text-foreground bg-secondary' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/60',
               )}
             >
               More
               <MoreHorizontal className="size-3.5" aria-hidden="true" />
             </button>
             {moreOpen && (
-              <div className="absolute left-0 top-14 w-44 border border-border bg-background shadow-lg z-50">
+              <div className="absolute left-0 top-11 w-48 overflow-hidden rounded-xl border border-border bg-popover p-1 shadow-xl z-50 reveal" style={{ ['--reveal-delay' as string]: '0ms', animationDuration: '180ms' }}>
                 {MORE_LINKS.map(({ href, label }) => (
                   <Link
                     key={href}
                     href={href}
                     onClick={() => setMoreOpen(false)}
                     className={cn(
-                      'flex px-4 py-2.5 text-xs tracking-[0.06em] uppercase transition-colors',
+                      'flex rounded-lg px-3 py-2.5 text-xs tracking-[0.06em] uppercase transition-colors',
                       pathname.startsWith(href)
-                        ? 'text-foreground bg-secondary/30'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/40',
+                        ? 'text-foreground bg-secondary'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/60',
                     )}
                   >
                     {label}

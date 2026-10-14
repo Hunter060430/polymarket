@@ -55,13 +55,13 @@ export async function BrowseCategories() {
             <Link
               key={c.name}
               href={`/markets/category/${slugify(c.name)}`}
-              className="group inline-flex items-center gap-3 border border-border px-4 py-2.5 hover:border-foreground hover:bg-secondary/30 transition-colors"
+              className="group inline-flex items-center gap-3 rounded-full border border-border bg-card px-4 py-2.5 hover:border-primary/50 hover:bg-secondary/60 transition-colors"
             >
               <span className="text-sm text-foreground group-hover:text-primary transition-colors">{c.name}</span>
               <span className="text-xs text-muted-foreground tabular-nums">{c.count}</span>
               {c.critical > 0 && (
                 <span
-                  className="text-xs tabular-nums px-1.5 py-0.5"
+                  className="rounded-full text-xs tabular-nums px-2 py-0.5"
                   style={{ color: 'var(--risk-critical)', backgroundColor: 'color-mix(in srgb, var(--risk-critical) 12%, transparent)' }}
                   title={`${c.critical} critical-risk markets`}
                 >

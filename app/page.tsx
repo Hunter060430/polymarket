@@ -88,39 +88,52 @@ export default async function LandingPage() {
       <main className="flex-1">
 
         {/* ── HERO ─────────────────────────────────────────────── */}
-        <section className="border-b border-border">
-          <div className="mx-auto max-w-6xl px-6">
+        <section className="hero-glow relative border-b border-border overflow-hidden">
+          <div className="dot-grid pointer-events-none absolute inset-0" aria-hidden="true" />
+          <div className="relative mx-auto max-w-6xl px-6">
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px]">
 
               {/* Left — headline */}
-              <div className="py-20 lg:py-32 lg:pr-16 lg:border-r border-border">
-                <div className="inline-flex items-center gap-3 mb-10">
-                  <div className="h-px w-8 bg-primary" aria-hidden="true" />
-                  <p className="text-xs tracking-[0.2em] uppercase text-primary font-medium">
+              <div className="py-20 lg:py-32 lg:pr-16">
+                <div className="reveal inline-flex items-center gap-2.5 mb-10 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1.5">
+                  <span className="relative flex size-1.5" aria-hidden="true">
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-60" />
+                    <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
+                  </span>
+                  <p className="text-[11px] tracking-[0.18em] uppercase text-primary font-medium">
                     Independent Watchdog
                   </p>
                 </div>
-                <h1 className="font-heading text-[clamp(2.6rem,7vw,6.5rem)] font-light leading-[0.95] tracking-tight text-foreground text-balance mb-8">
+                <h1
+                  className="reveal font-heading text-[clamp(2.6rem,7vw,6.5rem)] font-normal leading-[0.95] tracking-tight text-foreground text-balance mb-8"
+                  style={{ ['--reveal-delay' as string]: '80ms' }}
+                >
                   Does this market<br />
                   have{' '}
-                  <em className="not-italic text-primary">clear rules?</em>
+                  <em className="not-italic bg-gradient-to-r from-primary to-[var(--risk-high)] bg-clip-text text-transparent">clear rules?</em>
                 </h1>
-                <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-lg mb-8">
+                <p
+                  className="reveal text-sm sm:text-base text-muted-foreground leading-relaxed max-w-lg mb-8"
+                  style={{ ['--reveal-delay' as string]: '160ms' }}
+                >
                   Verdict scores every active Polymarket market across six dimensions of resolution
                   quality — in real time, before you trade. No black boxes. No discretion.
                   Deterministic, documented, and free.
                 </p>
-                <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3">
+                <div
+                  className="reveal flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3"
+                  style={{ ['--reveal-delay' as string]: '240ms' }}
+                >
                   <Link
                     href="/dashboard"
-                    className="inline-flex items-center justify-center gap-2.5 bg-foreground text-background px-7 py-3.5 text-xs tracking-[0.12em] uppercase font-medium hover:bg-primary transition-colors"
+                    className="group inline-flex items-center justify-center gap-2.5 rounded-full bg-foreground text-background px-7 py-3.5 text-xs tracking-[0.12em] uppercase font-medium shadow-lg shadow-foreground/10 hover:bg-primary hover:shadow-primary/25 transition-all"
                   >
                     Open Dashboard
-                    <ArrowRight className="size-3.5" aria-hidden="true" />
+                    <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                   </Link>
                   <Link
                     href="/markets?sort=score-asc&risk=Critical"
-                    className="inline-flex items-center justify-center gap-2.5 border border-border text-foreground px-7 py-3.5 text-xs tracking-[0.12em] uppercase font-medium hover:bg-secondary transition-colors"
+                    className="inline-flex items-center justify-center gap-2.5 rounded-full border border-border bg-background/60 text-foreground px-7 py-3.5 text-xs tracking-[0.12em] uppercase font-medium hover:bg-secondary hover:border-primary/40 transition-colors"
                   >
                     Critical Risk Markets
                   </Link>
@@ -128,15 +141,23 @@ export default async function LandingPage() {
               </div>
 
               {/* Right — live stats */}
-              <div className="hidden lg:flex flex-col justify-center pl-16 py-32">
-                <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground mb-6">Live Index</p>
-                <div className="divide-y divide-border border-t border-border">
-                  {STATS.map((s) => (
-                    <div key={s.label} className="py-6">
-                      <p className="font-heading text-5xl font-light text-foreground tabular-nums leading-none">{s.value}</p>
-                      <p className="text-xs text-muted-foreground mt-2 tracking-wide">{s.label}</p>
-                    </div>
-                  ))}
+              <div className="hidden lg:flex flex-col justify-center py-24">
+                <div
+                  className="reveal glass rounded-2xl border border-border p-7 shadow-xl shadow-foreground/5"
+                  style={{ ['--reveal-delay' as string]: '200ms' }}
+                >
+                  <p className="flex items-center gap-2 text-xs tracking-[0.16em] uppercase text-muted-foreground mb-4">
+                    <span className="size-1.5 rounded-full bg-[var(--risk-low)]" aria-hidden="true" />
+                    Live Index
+                  </p>
+                  <div className="divide-y divide-border">
+                    {STATS.map((s) => (
+                      <div key={s.label} className="py-5 first:pt-2 last:pb-1">
+                        <p className="font-heading text-5xl font-normal text-foreground tabular-nums leading-none">{s.value}</p>
+                        <p className="text-xs text-muted-foreground mt-2 tracking-wide">{s.label}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -148,10 +169,10 @@ export default async function LandingPage() {
         <section className="border-b border-border lg:hidden" aria-label="Key statistics">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
             <p className="text-xs tracking-[0.16em] uppercase text-muted-foreground mb-5">Live Index</p>
-            <div className="grid grid-cols-2 divide-x divide-y divide-border border border-border">
+            <div className="grid grid-cols-2 divide-x divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
               {STATS.map((s) => (
                 <div key={s.label} className="px-4 py-5">
-                  <p className="font-heading text-3xl sm:text-4xl font-light text-foreground tabular-nums leading-none">{s.value}</p>
+                  <p className="font-heading text-3xl sm:text-4xl font-normal text-foreground tabular-nums leading-none">{s.value}</p>
                   <p className="text-xs text-muted-foreground mt-2">{s.label}</p>
                 </div>
               ))}
@@ -206,10 +227,12 @@ export default async function LandingPage() {
                 <h2 className="font-heading text-3xl sm:text-4xl font-light text-foreground">Six dimensions. One score.</h2>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 divide-x divide-y divide-border border-t border-l border-border">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {FEATURES.map(({ icon: Icon, title, desc }) => (
-                <div key={title} className="px-7 py-8 border-b border-r border-border">
-                  <Icon className="size-5 text-primary mb-5 stroke-[1.25]" aria-hidden="true" />
+                <div key={title} className="card-lift rounded-2xl border border-border bg-card px-7 py-8">
+                  <span className="mb-5 inline-flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Icon className="size-5 stroke-[1.5]" aria-hidden="true" />
+                  </span>
                   <p className="text-sm font-medium text-foreground mb-2">{title}</p>
                   <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
                 </div>
@@ -232,10 +255,10 @@ export default async function LandingPage() {
                 </p>
               </div>
               <div className="lg:pl-16">
-                <div className="divide-y divide-border">
+                <div className="flex flex-col gap-3">
                   {RISK_LEVELS.map((r) => (
-                    <div key={r.label} className="flex items-start gap-6 py-7 first:pt-0 last:pb-0">
-                      <div className="w-0.5 self-stretch shrink-0 mt-1" style={{ backgroundColor: r.color }} aria-hidden="true" />
+                    <div key={r.label} className="card-lift flex items-start gap-6 rounded-2xl border border-border bg-card p-5">
+                      <div className="w-1 self-stretch shrink-0 rounded-full" style={{ backgroundColor: r.color }} aria-hidden="true" />
                       <div className="w-28 shrink-0">
                         <p className="font-heading text-2xl font-light" style={{ color: r.color }}>{r.label}</p>
                         <p className="text-xs text-muted-foreground tabular-nums mt-0.5">{r.range} pts</p>
@@ -250,8 +273,8 @@ export default async function LandingPage() {
         </section>
 
         {/* ── CTA ──────────────────────────────────────────────── */}
-        <section>
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 py-14 sm:py-24">
+        <section className="px-4 sm:px-6 py-14 sm:py-24">
+          <div className="hero-glow mx-auto max-w-6xl rounded-3xl border border-border bg-card px-6 py-12 sm:px-12 sm:py-16">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-20 items-end">
               <div>
                 <h2 className="font-heading text-4xl sm:text-5xl lg:text-6xl font-light text-foreground leading-tight text-balance">
@@ -265,14 +288,14 @@ export default async function LandingPage() {
                 <div className="flex flex-col gap-3 mt-2">
                   <Link
                     href="/markets?sort=score-asc&risk=Critical"
-                    className="inline-flex items-center justify-center gap-2.5 bg-foreground text-background px-7 py-3.5 text-xs tracking-[0.12em] uppercase font-medium hover:bg-primary transition-colors"
+                    className="inline-flex items-center justify-center gap-2.5 rounded-full bg-foreground text-background px-7 py-3.5 text-xs tracking-[0.12em] uppercase font-medium hover:bg-primary transition-colors"
                   >
                     View Critical-Risk Markets
                     <ArrowRight className="size-3.5" aria-hidden="true" />
                   </Link>
                   <Link
                     href="/submit-dispute"
-                    className="inline-flex items-center justify-center gap-2.5 border border-border text-foreground px-7 py-3.5 text-xs tracking-[0.12em] uppercase font-medium hover:bg-secondary transition-colors"
+                    className="inline-flex items-center justify-center gap-2.5 rounded-full border border-border text-foreground px-7 py-3.5 text-xs tracking-[0.12em] uppercase font-medium hover:bg-secondary transition-colors"
                   >
                     Report a Disputed Resolution
                   </Link>

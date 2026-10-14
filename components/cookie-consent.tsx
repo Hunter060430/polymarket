@@ -33,9 +33,9 @@ export function CookieConsent() {
       role="dialog"
       aria-label="Cookie consent"
       aria-live="polite"
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-sm px-4 py-4 sm:px-6"
+      className="glass fixed bottom-4 left-4 right-4 sm:left-6 sm:right-auto sm:max-w-xl z-50 rounded-2xl border border-border shadow-xl px-4 py-4 sm:px-5 reveal"
     >
-      <div className="max-w-5xl mx-auto flex flex-col sm:flex-row sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <p className="flex-1 text-xs text-muted-foreground leading-relaxed">
           We use essential cookies to keep you signed in and remember your preferences.{' '}
           <Link
@@ -49,13 +49,13 @@ export function CookieConsent() {
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={decline}
-            className="px-4 py-2 text-xs text-muted-foreground border border-border hover:text-foreground hover:bg-secondary/40 transition-colors"
+            className="rounded-full px-4 py-2 text-xs text-muted-foreground border border-border hover:text-foreground hover:bg-secondary/60 transition-colors"
           >
             Decline
           </button>
           <button
             onClick={accept}
-            className="px-4 py-2 text-xs font-medium text-primary-foreground bg-primary hover:bg-primary/90 transition-colors"
+            className="rounded-full px-4 py-2 text-xs font-medium text-primary-foreground bg-primary hover:bg-primary/90 transition-colors"
           >
             Accept
           </button>
