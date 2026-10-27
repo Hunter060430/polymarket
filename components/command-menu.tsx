@@ -42,6 +42,11 @@ export function CommandMenu() {
   const [query, setQuery] = useState('')
   const [markets, setMarkets] = useState<MarketHit[]>([])
   const [searching, setSearching] = useState(false)
+  const [isMac, setIsMac] = useState(false)
+
+  useEffect(() => {
+    setIsMac(/Mac|iPhone|iPad/.test(navigator.platform))
+  }, [])
 
   // ⌘K / Ctrl+K to toggle
   useEffect(() => {
@@ -110,8 +115,8 @@ export function CommandMenu() {
         className="inline-flex items-center gap-2 h-9 px-2 sm:pl-2.5 sm:pr-2 text-muted-foreground hover:text-foreground transition-colors"
       >
         <Search className="size-4" aria-hidden="true" />
-        <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[10px] border border-border px-1.5 py-0.5 font-mono">
-          ⌘K
+        <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[10px] border border-border px-1.5 py-0.5 font-sans">
+          {isMac ? '⌘' : 'Ctrl'} K
         </kbd>
       </button>
 
