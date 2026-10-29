@@ -93,7 +93,21 @@ const loadPublicComments = unstable_cache(
   { revalidate: COMMUNITY_CACHE_SECONDS },
 )
 
+// Public pages must keep rendering when the database is unavailable (e.g. quota exceeded).
+async function orFallback<T>(label: string, run: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await run()
+  } catch (error) {
+    console.error(`[community] ${label} failed, serving fallback:`, error instanceof Error ? error.message : error)
+    return fallback
+  }
+}
+
 export async function getComments(marketId: string): Promise<CommentWithAuthor[]> {
+  return orFallback('comments', () => readComments(marketId), [])
+}
+
+async function readComments(marketId: string): Promise<CommentWithAuthor[]> {
   const [cached, session] = await Promise.all([loadPublicComments(marketId), getSession()])
   // unstable_cache round-trips through JSON, so createdAt arrives as a string.
   const comments = cached.map((comment) => ({ ...comment, createdAt: new Date(comment.createdAt) }))
@@ -233,6 +247,14 @@ const loadPublicTally = unstable_cache(
 )
 
 export async function getRiskTally(marketId: string): Promise<RiskTally> {
+  return orFallback(
+    'risk tally',
+    () => readRiskTally(marketId),
+    { low: 0, medium: 0, high: 0, critical: 0, total: 0, userVote: null },
+  )
+}
+
+async function readRiskTally(marketId: string): Promise<RiskTally> {
   const [tally, session] = await Promise.all([loadPublicTally(marketId), getSession()])
   const viewerId = session?.user?.id
   if (!viewerId) return { ...tally, userVote: null }
@@ -293,7 +315,7 @@ const loadTrendingMarketIds = unstable_cache(
 )
 
 export async function getTrendingMarketIds(limit = 6): Promise<TrendingEntry[]> {
-  return loadTrendingMarketIds(limit)
+  return orFallback('trending', () => loadTrendingMarketIds(limit), [])
 }
 
 export async function castRiskVote(

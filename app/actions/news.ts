@@ -94,16 +94,28 @@ const loadNewsBySlug = unstable_cache(
   { tags: [NEWS_TAG], revalidate: NEWS_CACHE_SECONDS },
 )
 
+// Public pages must keep rendering when the database is unavailable (e.g. quota exceeded).
+async function orFallback<T>(label: string, run: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await run()
+  } catch (error) {
+    console.error(`[news] ${label} failed, serving fallback:`, error instanceof Error ? error.message : error)
+    return fallback
+  }
+}
+
 export async function getPublishedNews() {
-  return (await loadPublishedNews()).map(reviveNewsDates)
+  const rows = await orFallback('published list', loadPublishedNews, [])
+  return rows.map(reviveNewsDates)
 }
 
 export async function getPublishedNewsForMatching() {
-  return (await loadPublishedNewsForMatching()).map(reviveNewsDates)
+  const rows = await orFallback('matching list', loadPublishedNewsForMatching, [])
+  return rows.map(reviveNewsDates)
 }
 
 export async function getNewsBySlug(slug: string) {
-  const post = await loadNewsBySlug(slug)
+  const post = await orFallback('by slug', () => loadNewsBySlug(slug), null)
   return post ? reviveNewsDates(post) : null
 }
 
