@@ -212,10 +212,9 @@
     -webkit-mask-image: radial-gradient(ellipse 70% 60% at 30% 30%, #000 30%, transparent 75%);
   }
 
+  /* No backdrop-filter: re-blurring behind a sticky header on every scroll frame is a major GPU/CPU cost. */
   .glass {
-    background-color: color-mix(in oklch, var(--background) 78%, transparent);
-    -webkit-backdrop-filter: saturate(1.4) blur(14px);
-    backdrop-filter: saturate(1.4) blur(14px);
+    background-color: color-mix(in oklch, var(--background) 94%, transparent);
   }
 
   .card-lift {

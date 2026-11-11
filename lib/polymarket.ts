@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
-import type { PolymarketEvent, NormalizedMarket } from './types'
+import type { PolymarketEvent, NormalizedMarket, ListMarket } from './types'
 import { calculateRuleClarityScore } from './rule-clarity-score'
 import { calculateLiquidityScore, calculateRegulatorySensitivity } from './market-signals'
 
@@ -298,6 +298,38 @@ export async function fetchAllActivePolymarketMarkets(): Promise<NormalizedMarke
     })
 
   return activeInflight
+}
+
+// The list view only needs a handful of fields per market. Projecting ~8600
+// markets on every request (and serializing the full objects) was the dominant
+// per-request CPU cost, so the projection is memoized against the cached
+// source array and recomputed only when that array is refreshed.
+const slimCache = new WeakMap<NormalizedMarket[], ListMarket[]>()
+
+export async function fetchSlimActiveMarkets(): Promise<{ markets: ListMarket[]; eventCount: number }> {
+  const all = await fetchAllActivePolymarketMarkets()
+  let markets = slimCache.get(all)
+  if (!markets) {
+    markets = all.map((m) => ({
+      marketId: m.marketId,
+      question: m.question,
+      eventTitle: m.eventTitle,
+      eventCategory: m.eventCategory,
+      endDate: m.endDate,
+      volume: m.volume,
+      outcomes: m.outcomes.slice(0, 1),
+      outcomePrices: m.outcomePrices.slice(0, 1),
+      score: {
+        totalScore: m.score.totalScore,
+        riskLevel: m.score.riskLevel,
+        flags: m.score.flags.slice(0, 1),
+      },
+      regulatorySensitivity: { level: m.regulatorySensitivity.level, score: m.regulatorySensitivity.score },
+      liquidityScore: { level: m.liquidityScore.level, score: m.liquidityScore.score },
+    }))
+    slimCache.set(all, markets)
+  }
+  return { markets, eventCount: new Set(all.map((m) => m.eventId)).size }
 }
 
 // ---------------------------------------------------------------------------

@@ -97,7 +97,7 @@ export default async function LandingPage() {
               <div className="py-20 lg:py-32 lg:pr-16">
                 <div className="reveal inline-flex items-center gap-2.5 mb-10 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1.5">
                   <span className="relative flex size-1.5" aria-hidden="true">
-                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-60" />
+                    <span className="absolute inline-flex size-full scale-150 rounded-full bg-primary opacity-30" />
                     <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
                   </span>
                   <p className="text-[11px] tracking-[0.18em] uppercase text-primary font-medium">

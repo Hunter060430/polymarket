@@ -359,7 +359,7 @@ function PreSeasonCard() {
           <Zap className="size-4 text-primary shrink-0" aria-hidden="true" />
           <span className="text-xs tracking-[0.1em] uppercase font-medium text-foreground">Pre-Season</span>
           <span className="relative flex size-1.5 ml-1">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+            <span className="absolute inline-flex h-full w-full scale-150 rounded-full bg-primary opacity-30" />
             <span className="relative inline-flex rounded-full size-1.5 bg-primary" />
           </span>
         </div>

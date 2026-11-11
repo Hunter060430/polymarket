@@ -79,7 +79,7 @@ export function UserMenu() {
             <Zap className="size-3.5" aria-hidden="true" />
             Pre-Season
             <span className="ml-auto relative flex size-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+              <span className="absolute inline-flex h-full w-full scale-150 rounded-full bg-primary opacity-30" />
               <span className="relative inline-flex rounded-full size-1.5 bg-primary" />
             </span>
           </Link>

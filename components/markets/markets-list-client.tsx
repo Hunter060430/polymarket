@@ -12,13 +12,13 @@ import { Search, ArrowRight, ChevronLeft, ChevronRight, Keyboard } from 'lucide-
 import { formatVolume, formatDate, cn } from '@/lib/utils'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { useWatchlist } from '@/hooks/use-watchlist'
-import type { NormalizedMarket, RiskLevel } from '@/lib/types'
+import type { ListMarket, RiskLevel } from '@/lib/types'
 
 const PAGE_SIZE = 25
 const RISK_ORDER: Record<RiskLevel, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 }
 
 interface MarketsListClientProps {
-  markets: NormalizedMarket[]
+  markets: ListMarket[]
 }
 
 export function MarketsListClient({ markets }: MarketsListClientProps) {

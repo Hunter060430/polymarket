@@ -122,6 +122,21 @@ export interface NormalizedMarket {
   }
 }
 
+/** Minimal per-market shape the list view needs; keeps the RSC payload small. */
+export interface ListMarket {
+  marketId: string
+  question: string
+  eventTitle: string
+  eventCategory: string
+  endDate: string
+  volume: number
+  outcomes: string[]
+  outcomePrices: number[]
+  score: Pick<RuleClarityScore, 'totalScore' | 'riskLevel' | 'flags'>
+  regulatorySensitivity: Pick<RegulatorySensitivityScore, 'level' | 'score'>
+  liquidityScore: Pick<LiquidityScore, 'level' | 'score'>
+}
+
 export interface MarketsApiResponse {
   scannedAt: string
   eventCount: number

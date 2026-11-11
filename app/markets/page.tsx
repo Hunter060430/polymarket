@@ -6,8 +6,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { MarketsListClient } from '@/components/markets/markets-list-client'
 import { AlertCircle } from 'lucide-react'
-import { fetchAllActivePolymarketMarkets } from '@/lib/polymarket'
-import type { MarketsApiResponse } from '@/lib/types'
+import { fetchSlimActiveMarkets } from '@/lib/polymarket'
 
 // ── Dynamic metadata ──────────────────────────────────────────────────────────
 
@@ -40,40 +39,10 @@ export async function generateMetadata({
 
 // ── Data fetching ─────────────────────────────────────────────────────────────
 
-async function getMarkets(): Promise<MarketsApiResponse> {
-  const markets = await fetchAllActivePolymarketMarkets()
-  const uniqueEventIds = new Set(markets.map((m) => m.eventId))
-
-  // The list view renders ~8600 rows but only needs a handful of fields. The
-  // full objects (~38MB) include long `description` text and per-dimension
-  // `trace`/`dimensionDetails` that the list never reads — serializing all of
-  // that into the RSC payload was the dominant cost (multi-second warm loads).
-  // Strip the heavy fields here so the client receives a lean payload; the
-  // detail page fetches the complete market on demand via fetchMarketById.
-  const slim = markets.map((m) => ({
-    ...m,
-    description: '',
-    resolutionSource: '',
-    clobTokenIds: [],
-    score: {
-      ...m.score,
-      trace: undefined,
-      dimensionDetails: undefined,
-    },
-  }))
-
-  return {
-    scannedAt: new Date().toISOString(),
-    eventCount: uniqueEventIds.size,
-    marketCount: markets.length,
-    markets: slim,
-  }
-}
-
 async function MarketsContent() {
   try {
-    const data = await getMarkets()
-    return <MarketsListClient markets={data.markets} />
+    const { markets } = await fetchSlimActiveMarkets()
+    return <MarketsListClient markets={markets} />
   } catch (err) {
     return (
       <div className="flex items-center gap-3 text-sm border border-destructive/40 px-5 py-4 text-destructive">
